@@ -3,7 +3,7 @@ import express from 'express';
 import initDatabase from '../db';
 import setupPlayerRoutes from './playerRoutes';
 import { Database } from 'sqlite';
-import { hashPassword } from '../auth';
+import { generateToken, hashPassword } from '../auth';
 
 const app = express();
 app.use(express.json());
@@ -98,8 +98,11 @@ describe('Player routes', () => {
         'player',
       ]
     );
+    const token = generateToken({ id: lastID, role: 'player' });
 
-    const res = await supertest(app).get(`/players/${lastID}`);
+    const res = await supertest(app)
+      .get(`/players/${lastID}`)
+      .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toEqual(200);
     expect(res.body).toHaveProperty('id');
@@ -121,7 +124,7 @@ describe('Player routes', () => {
         'player',
       ]
     );
-    await db.run(
+    const { lastID } = await db.run(
       'INSERT INTO players (name, email, cellphone, password, role) VALUES (?, ?, ?, ?, ?)',
       [
         'Jane Doe',
@@ -131,8 +134,11 @@ describe('Player routes', () => {
         'player',
       ]
     );
+    const token = generateToken({ id: lastID, role: 'player' });
 
-    const res = await supertest(app).get('/players');
+    const res = await supertest(app)
+      .get('/players')
+      .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toEqual(200);
     expect(res.body).toHaveLength(2);
@@ -157,10 +163,12 @@ describe('Player routes', () => {
       email: 'johnupdated@example.com',
       cellphone: '+1234567899',
     };
+    const token = generateToken({ id: lastID, role: 'player' });
 
     const res = await supertest(app)
       .put(`/players/${lastID}`)
-      .send(updatedPlayerData);
+      .send(updatedPlayerData)
+      .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toEqual(200);
     expect(res.body).toHaveProperty('id');
@@ -182,8 +190,11 @@ describe('Player routes', () => {
         'player',
       ]
     );
+    const token = generateToken({ id: lastID, role: 'player' });
 
-    const res = await supertest(app).delete(`/players/${lastID}`);
+    const res = await supertest(app)
+      .delete(`/players/${lastID}`)
+      .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toEqual(200);
     expect(res.body).toHaveProperty('id');

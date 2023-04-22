@@ -1,7 +1,7 @@
 import sqlite3 from 'sqlite3';
 import { Database, open } from 'sqlite';
 
-const DATABASE_FILE = process.env.DATABASE_FILE || './database.sqlite';
+const DATABASE_FILE = process.env.DATABASE_FILE || ':memory:';
 
 const initDatabase = async (): Promise<Database> => {
   const db = await open({
