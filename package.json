@@ -1,0 +1,32 @@
+{
+  "name": "sports-team-api-gpt4",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/bcrypt": "^5.0.0",
+    "@types/express": "^4.17.17",
+    "@types/jsonwebtoken": "^9.0.1",
+    "@types/sqlite3": "^3.1.8",
+    "bcrypt": "^5.1.0",
+    "body-parser": "^1.20.2",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
+    "sqlite": "^4.1.2",
+    "sqlite3": "^5.1.6",
+    "typescript": "^5.0.4"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.1",
+    "@types/supertest": "^2.0.12",
+    "jest": "^29.5.0",
+    "supertest": "^6.3.3",
+    "ts-jest": "^29.1.0"
+  }
+}
