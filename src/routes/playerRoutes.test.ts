@@ -196,6 +196,12 @@ describe('Player routes', () => {
       .delete(`/players/${lastID}`)
       .set('Authorization', `Bearer ${token}`);
 
+    const deletedPlayer = await db.get(
+      'SELECT id, name, email, cellphone FROM players WHERE id = ?',
+      lastID
+    );
+
+    expect(deletedPlayer).toBe(undefined);
     expect(res.status).toEqual(200);
     expect(res.body).toHaveProperty('id');
     expect(res.body.name).toEqual(playerData.name);
