@@ -12,6 +12,13 @@ export interface Team {
   captainId: number;
 }
 
+export interface TeamMembership {
+  id: number;
+  teamId: number;
+  playerId: number;
+  isCaptain: boolean;
+}
+
 export interface Game {
   id: number;
   location: string;

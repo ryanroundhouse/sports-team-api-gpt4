@@ -21,9 +21,16 @@ const initDatabase = async (): Promise<Database> => {
 
     CREATE TABLE IF NOT EXISTS teams (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      captain_id INTEGER NOT NULL,
-      FOREIGN KEY (captain_id) REFERENCES players (id)
+      name TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS team_memberships (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      is_captain BOOLEAN NOT NULL,
+      team_id INTEGER NOT NULL,
+      player_id INTEGER NOT NULL,
+      FOREIGN KEY (team_id) REFERENCES teams (id),
+      FOREIGN KEY (player_id) REFERENCES players (id)
     );
 
     CREATE TABLE IF NOT EXISTS games (
