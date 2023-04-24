@@ -5,6 +5,13 @@ import setupTeamRoutes from './teamRoutes'
 import { Database } from 'sqlite'
 import { generateToken, hashPassword } from '../auth'
 import { createTeamMembership } from '../dataAccess/teamMembershipData'
+import {
+  createTeam,
+  getTeamById,
+  getTeams,
+  updateTeam,
+  deleteTeam,
+} from '../dataAccess/teamData'
 
 const app = express()
 app.use(express.json())
@@ -72,12 +79,10 @@ describe('Team routes', () => {
   it('should read one team', async () => {
     const token = generateToken({ id: playerData.playerId, role: 'player' })
 
-    const result = await db.run('INSERT INTO teams (name) VALUES (?)', [
-      teamData.name,
-    ])
+    const createdTeam = await createTeam(db, teamData.name)
 
     const res = await supertest(app)
-      .get(`/teams/${result.lastID}`)
+      .get(`/teams/${createdTeam}`)
       .set('Authorization', `Bearer ${token}`)
 
     expect(res.status).toEqual(200)
@@ -86,8 +91,8 @@ describe('Team routes', () => {
   })
 
   it('should read many teams', async () => {
-    await db.run('INSERT INTO teams (name) VALUES (?)', teamData.name)
-    await db.run('INSERT INTO teams (name) VALUES (?)', 'Another Test Team')
+    await createTeam(db, teamData.name)
+    await createTeam(db, 'Another Test Team')
     const token = generateToken({ id: playerData.playerId, role: 'player' })
 
     const res = await supertest(app)
@@ -99,14 +104,11 @@ describe('Team routes', () => {
   })
 
   it('should update a team', async () => {
-    const { lastID } = await db.run(
-      'INSERT INTO teams (name) VALUES (?)',
-      teamData.name,
-    )
+    const createdTeam = await createTeam(db, teamData.name)
 
     const membership = await createTeamMembership(
       db,
-      lastID,
+      createdTeam,
       playerData.playerId,
       true,
     )
@@ -117,7 +119,7 @@ describe('Team routes', () => {
     const token = generateToken({ id: playerData.playerId, role: 'player' })
 
     const res = await supertest(app)
-      .put(`/teams/${lastID}`)
+      .put(`/teams/${createdTeam}`)
       .set('Authorization', `Bearer ${token}`)
       .send(updatedTeamData)
 
@@ -128,27 +130,20 @@ describe('Team routes', () => {
 
   it('should delete a team', async () => {
     const token = generateToken({ id: playerData.playerId, role: 'player' })
-
-    const createTeamRes = await supertest(app)
-      .post('/teams')
-      .set('Authorization', `Bearer ${token}`)
-      .send(teamData)
-
-    const createdTeam = await db.get(
-      'SELECT id, name FROM teams WHERE id = ?',
-      createTeamRes.body.id,
+    const createdTeam = await createTeam(db, teamData.name)
+    const membership = await createTeamMembership(
+      db,
+      createdTeam,
+      playerData.playerId,
+      true,
     )
 
     const res = await supertest(app)
-      .delete(`/teams/${createTeamRes.body.id}`)
+      .delete(`/teams/${createdTeam}`)
       .set('Authorization', `Bearer ${token}`)
 
-    const deletedTeam = await db.get(
-      'SELECT id, name FROM teams WHERE id = ?',
-      createTeamRes.body.id,
-    )
+    const deletedTeam = await getTeamById(db, createdTeam)
 
-    expect(createdTeam).toBeDefined()
     expect(deletedTeam).toBeUndefined()
     expect(res.status).toEqual(200)
     expect(res.body).toHaveProperty('id')

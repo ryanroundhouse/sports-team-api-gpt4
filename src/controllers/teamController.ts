@@ -5,6 +5,13 @@ import {
   deleteTeamMembershipsByTeam,
   isUserCaptainOfTeam,
 } from '../dataAccess/teamMembershipData'
+import {
+  createTeam,
+  getTeams,
+  getTeamById,
+  updateTeam,
+  deleteTeam,
+} from '../dataAccess/teamData'
 
 const teamController = {
   async create(req: Request, res: Response, db: Database) {
@@ -12,14 +19,9 @@ const teamController = {
     const userId = req.userId
 
     try {
-      const result = await db.run('INSERT INTO teams (name) VALUES (?)', [name])
+      const newTeamId = await createTeam(db, name)
 
-      const newTeamId = result.lastID
-
-      const newTeam = await db.get(
-        'SELECT id, name FROM teams WHERE id = ?',
-        newTeamId,
-      )
+      const newTeam = await getTeamById(db, newTeamId)
 
       const newMembership = await createTeamMembership(
         db,
@@ -38,7 +40,7 @@ const teamController = {
 
   async readMany(req: Request, res: Response, db: Database) {
     try {
-      const teams = await db.all('SELECT id, name FROM teams')
+      const teams = await getTeams(db)
       res.status(200).send(teams)
     } catch (error) {
       res
@@ -51,7 +53,7 @@ const teamController = {
     const { id } = req.params
 
     try {
-      const team = await db.get('SELECT id, name FROM teams WHERE id = ?', id)
+      const team = await getTeamById(db, Number(id))
 
       if (!team) {
         return res.status(404).send({ message: 'Team not found.' })
@@ -79,12 +81,9 @@ const teamController = {
           .send({ message: 'Only the team captain can update the team.' })
       }
 
-      await db.run('UPDATE teams SET name = ? WHERE id = ?', [name, id])
+      await updateTeam(db, Number(id), name)
 
-      const updatedTeam = await db.get(
-        'SELECT id, name FROM teams WHERE id = ?',
-        id,
-      )
+      const updatedTeam = await getTeamById(db, Number(id))
 
       if (!updatedTeam) {
         return res.status(404).send({ message: 'Team not found.' })
@@ -103,10 +102,7 @@ const teamController = {
     const userId = req.userId
 
     try {
-      const deletedTeam = await db.get(
-        'SELECT id, name FROM teams WHERE id = ?',
-        id,
-      )
+      const deletedTeam = await getTeamById(db, Number(id))
 
       if (!deletedTeam) {
         return res.status(404).send({ message: 'Team not found.' })
@@ -128,7 +124,7 @@ const teamController = {
       await deleteTeamMembershipsByTeam(db, parseInt(id))
 
       // Delete the team
-      await db.run('DELETE FROM teams WHERE id = ?', id)
+      await deleteTeam(db, parseInt(id))
 
       res.status(200).send(deletedTeam)
     } catch (error) {
