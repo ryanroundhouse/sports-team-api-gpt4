@@ -1,53 +1,54 @@
-import { Request, Response } from 'express';
-import { Database } from 'sqlite';
-import { hashPassword, validatePassword, generateToken } from '../auth';
+import { Request, Response } from 'express'
+import { Database } from 'sqlite'
+import { hashPassword, validatePassword, generateToken } from '../auth'
+import {
+  createPlayer,
+  getPlayerByEmail,
+  getPlayerById,
+  getPlayers,
+  updatePlayer,
+  deletePlayer,
+} from '../dataAccess/playerData'
 
 const playerController = {
   async create(req: Request, res: Response, db: Database) {
-    const { name, email, cellphone, password } = req.body;
+    const { name, email, cellphone, password } = req.body
 
-    const hashedPassword = await hashPassword(password);
+    const hashedPassword = await hashPassword(password)
 
     try {
-      const result = await db.run(
-        'INSERT INTO players (name, email, cellphone, password, role) VALUES (?, ?, ?, ?, ?)',
-        [name, email, cellphone, hashedPassword, 'player']
-      );
+      const newPlayer = await createPlayer(
+        db,
+        name,
+        email,
+        cellphone,
+        hashedPassword,
+      )
 
-      const newPlayerId = result.lastID;
-
-      const newPlayer = await db.get(
-        'SELECT id, name, email, cellphone FROM players WHERE id = ?',
-        newPlayerId
-      );
-
-      res.status(201).send(newPlayer);
+      res.status(201).send(newPlayer)
     } catch (error) {
       res
         .status(500)
-        .send({ message: 'An error occurred while creating the player.' });
+        .send({ message: 'An error occurred while creating the player.' })
     }
   },
 
   async login(req: Request, res: Response, db: Database) {
-    const { email, password } = req.body;
+    const { email, password } = req.body
 
-    const user = await db.get(
-      'SELECT id, name, email, cellphone, password, role FROM players WHERE email = ?',
-      email
-    );
+    const user = await getPlayerByEmail(db, email)
 
     if (!user) {
-      return res.status(404).send({ message: 'User not found.' });
+      return res.status(404).send({ message: 'User not found.' })
     }
 
-    const isPasswordValid = await validatePassword(password, user.password);
+    const isPasswordValid = await validatePassword(password, user.password)
 
     if (!isPasswordValid) {
-      return res.status(401).send({ message: 'Invalid email or password.' });
+      return res.status(401).send({ message: 'Invalid email or password.' })
     }
 
-    const token = generateToken({ id: user.id, role: user.role });
+    const token = generateToken({ id: user.id, role: user.role })
 
     res.status(200).send({
       id: user.id,
@@ -56,92 +57,80 @@ const playerController = {
       cellphone: user.cellphone,
       role: user.role,
       token,
-    });
+    })
   },
 
   async readOne(req: Request, res: Response, db: Database) {
-    const { id } = req.params;
+    const { id } = req.params
 
     try {
-      const player = await db.get(
-        'SELECT id, name, email, cellphone FROM players WHERE id = ?',
-        id
-      );
+      const player = await getPlayerById(db, Number(id))
 
       if (!player) {
-        return res.status(404).send({ message: 'Player not found.' });
+        return res.status(404).send({ message: 'Player not found.' })
       }
 
-      res.status(200).send(player);
+      res.status(200).send(player)
     } catch (error) {
       res
         .status(500)
-        .send({ message: 'An error occurred while fetching the player.' });
+        .send({ message: 'An error occurred while fetching the player.' })
     }
   },
 
   async readMany(req: Request, res: Response, db: Database) {
     try {
-      const players = await db.all(
-        'SELECT id, name, email, cellphone FROM players'
-      );
+      const players = await getPlayers(db)
 
-      res.status(200).send(players);
+      res.status(200).send(players)
     } catch (error) {
       res
         .status(500)
-        .send({ message: 'An error occurred while fetching players.' });
+        .send({ message: 'An error occurred while fetching players.' })
     }
   },
 
   async update(req: Request, res: Response, db: Database) {
-    const { id } = req.params;
-    const { name, email, cellphone } = req.body;
+    const { id } = req.params
+    const { name, email, cellphone } = req.body
 
     try {
-      await db.run(
-        'UPDATE players SET name = ?, email = ?, cellphone = ? WHERE id = ?',
-        [name, email, cellphone, id]
-      );
-
-      const updatedPlayer = await db.get(
-        'SELECT id, name, email, cellphone FROM players WHERE id = ?',
-        id
-      );
+      const updatedPlayer = await updatePlayer(
+        db,
+        Number(id),
+        name,
+        email,
+        cellphone,
+      )
 
       if (!updatedPlayer) {
-        return res.status(404).send({ message: 'Player not found.' });
+        return res.status(404).send({ message: 'Player not found.' })
       }
 
-      res.status(200).send(updatedPlayer);
+      res.status(200).send(updatedPlayer)
     } catch (error) {
       res
         .status(500)
-        .send({ message: 'An error occurred while updating the player.' });
+        .send({ message: 'An error occurred while updating the player.' })
     }
   },
 
   async delete(req: Request, res: Response, db: Database) {
-    const { id } = req.params;
+    const { id } = req.params
     try {
-      const deletedPlayer = await db.get(
-        'SELECT id, name, email, cellphone FROM players WHERE id = ?',
-        id
-      );
+      const deletedPlayer = await deletePlayer(db, Number(id))
 
       if (!deletedPlayer) {
-        return res.status(404).send({ message: 'Player not found.' });
+        return res.status(404).send({ message: 'Player not found.' })
       }
 
-      await db.run('DELETE FROM players WHERE id = ?', id);
-
-      res.status(200).send(deletedPlayer);
+      res.status(200).send(deletedPlayer)
     } catch (error) {
       res
         .status(500)
-        .send({ message: 'An error occurred while deleting the player.' });
+        .send({ message: 'An error occurred while deleting the player.' })
     }
   },
-};
+}
 
-export default playerController;
+export default playerController
