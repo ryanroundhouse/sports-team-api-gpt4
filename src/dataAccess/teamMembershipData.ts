@@ -49,14 +49,21 @@ export const getTeamMembershipsByTeam = async (
   )
 }
 
-export const getTeamMembershipByIdAndTeam = async (
+export const getTeamMembershipByPlayerIdAndTeam = async (
   db: Database,
   id: number,
   team_id: number,
 ) => {
   return await db.get(
-    'SELECT id, team_id, player_id, is_captain FROM team_memberships WHERE id = ? AND team_id = ?',
+    'SELECT id, team_id, player_id, is_captain FROM team_memberships WHERE player_id = ? AND team_id = ?',
     [id, team_id],
+  )
+}
+
+export const getTeamMembershipById = async (db: Database, id: number) => {
+  return await db.get(
+    'SELECT id, team_id, player_id, is_captain FROM team_memberships WHERE id = ?',
+    [id],
   )
 }
 

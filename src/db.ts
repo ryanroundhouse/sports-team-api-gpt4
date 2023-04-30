@@ -1,13 +1,13 @@
-import sqlite3 from 'sqlite3';
-import { Database, open } from 'sqlite';
+import sqlite3 from 'sqlite3'
+import { Database, open } from 'sqlite'
 
-const DATABASE_FILE = process.env.DATABASE_FILE || ':memory:';
+const DATABASE_FILE = process.env.DATABASE_FILE || ':memory:'
 
 const initDatabase = async (): Promise<Database> => {
   const db = await open({
     filename: DATABASE_FILE,
     driver: sqlite3.Database,
-  });
+  })
 
   await db.exec(`
     CREATE TABLE IF NOT EXISTS players (
@@ -51,9 +51,9 @@ const initDatabase = async (): Promise<Database> => {
       FOREIGN KEY (player_id) REFERENCES players (id),
       FOREIGN KEY (game_id) REFERENCES games (id)
     );
-  `);
+  `)
 
-  return db;
-};
+  return db
+}
 
-export default initDatabase;
+export default initDatabase
