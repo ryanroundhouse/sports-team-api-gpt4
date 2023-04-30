@@ -66,7 +66,7 @@ const gameController = {
     const { id } = req.params
     const { location, opposingTeam, time, notes, teamId } = req.body
     const updatedGameData: Game = {
-      id: Number(id),
+      id: parseInt(id),
       location,
       opposingTeam,
       time: new Date(time),
@@ -75,7 +75,7 @@ const gameController = {
     }
 
     try {
-      const isCaptain = await isUserCaptainOfTeam(db, userId, Number(id))
+      const isCaptain = await isUserCaptainOfTeam(db, userId, teamId)
 
       if (!isCaptain) {
         return res

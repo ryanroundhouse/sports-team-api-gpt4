@@ -6,10 +6,17 @@ import setupPlayerRoutes from './playerRoutes'
 import setupTeamRoutes from './teamRoutes'
 import { Database } from 'sqlite'
 import { generateToken, hashPassword } from '../auth'
-import { createPlayer, deletePlayer } from '../dataAccess/playerData'
-import { createTeam } from '../dataAccess/teamData'
-import { createTeamMembership } from '../dataAccess/teamMembershipData'
-import { createGame } from '../dataAccess/gameData'
+import {
+  createPlayer,
+  deletePlayer,
+  getPlayers,
+} from '../dataAccess/playerData'
+import { createTeam, getTeams } from '../dataAccess/teamData'
+import {
+  createTeamMembership,
+  getTeamMembershipsByTeam,
+} from '../dataAccess/teamMembershipData'
+import { createGame, getAllGames } from '../dataAccess/gameData'
 import { Game } from '../models'
 
 const app = express()
@@ -231,5 +238,106 @@ describe('GET /games/:id', () => {
 
     expect(res.status).toEqual(404)
     expect(res.body.message).toEqual('Game not found.')
+  })
+})
+
+describe('PUT /games/:id', () => {
+  const captainData = {
+    playerId: 1,
+    name: 'Captain',
+    email: 'captain@example.com',
+    cellphone: '+1234567890',
+    password: 'test123',
+    role: 'player',
+  }
+
+  const teamData = {
+    name: 'Test Team',
+  }
+
+  const gameData = {
+    location: 'Test Location',
+    opposingTeam: 'Test Opposing Team',
+    time: '2023-05-01T18:00:00.000Z',
+    notes: 'Test Notes',
+    teamId: 1,
+  }
+
+  let captainId
+  let nonCaptainId
+  let teamId
+  let gameId
+
+  beforeEach(async () => {
+    captainId = (
+      await createPlayer(
+        db,
+        captainData.name,
+        captainData.email,
+        captainData.cellphone,
+        await hashPassword(captainData.password),
+      )
+    ).id
+
+    nonCaptainId = (
+      await createPlayer(
+        db,
+        'Non-Captain',
+        'non-captain@example.com',
+        '+1234567891',
+        await hashPassword('test123'),
+      )
+    ).id
+
+    teamId = await createTeam(db, teamData.name)
+    gameData.teamId = teamId
+
+    await createTeamMembership(db, teamId, captainId, true)
+    await createTeamMembership(db, teamId, nonCaptainId, false)
+
+    const gameData1: Game = {
+      id: 0, // This will be replaced by the auto-incrementing ID in the database.
+      location: 'Test Location 1',
+      opposingTeam: 'Test Opposing Team 1',
+      time: new Date('2023-05-01T18:00:00.000Z'),
+      notes: 'Test Notes 1',
+      teamId: teamId,
+    }
+
+    gameId = (await createGame(db, gameData1)).id
+  })
+
+  afterEach(async () => {
+    await db.run('DELETE FROM teams')
+    await db.run('DELETE FROM players')
+    await db.run('DELETE FROM team_memberships')
+    await db.run('DELETE FROM games')
+  })
+
+  it('should update the game if the user is the team captain', async () => {
+    const token = generateToken({ id: captainId, role: 'player' })
+    const newLocation = 'Updated Location'
+
+    const res = await supertest(app)
+      .put(`/games/${gameId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ ...gameData, location: newLocation })
+
+    expect(res.status).toEqual(200)
+    expect(res.body).toHaveProperty('id', gameId)
+    expect(res.body.location).toEqual(newLocation)
+  })
+
+  it('should not update the game if the user is not the team captain', async () => {
+    const token = generateToken({ id: nonCaptainId, role: 'player' })
+    const newLocation = 'Updated Location'
+
+    const res = await supertest(app)
+      .put(`/games/${gameId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ ...gameData, location: newLocation })
+
+    expect(res.status).toEqual(403)
+    expect(res.body.message).toEqual('Only the team captain can update a game.')
   })
 })
