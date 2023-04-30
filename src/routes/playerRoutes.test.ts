@@ -4,6 +4,7 @@ import initDatabase from '../db';
 import setupPlayerRoutes from './playerRoutes';
 import { Database } from 'sqlite';
 import { generateToken, hashPassword } from '../auth';
+import { createPlayer } from '../dataAccess/playerData';
 
 const app = express();
 app.use(express.json());
@@ -175,6 +176,54 @@ describe('Player routes', () => {
     expect(res.body.name).toEqual(updatedPlayerData.name);
     expect(res.body.email).toEqual(updatedPlayerData.email);
     expect(res.body.cellphone).toEqual(updatedPlayerData.cellphone);
+  });
+
+  it("should not allow a player to update another player's information", async () => {
+    // Create a test player for this test
+    const hashedPassword = await hashPassword(playerData.password);
+    const playerToUpdate = (
+      await db.run(
+        'INSERT INTO players (name, email, cellphone, password, role) VALUES (?, ?, ?, ?, ?)',
+        [
+          playerData.name,
+          playerData.email,
+          playerData.cellphone,
+          hashedPassword,
+          'player',
+        ]
+      )
+    ).lastID;
+
+    const unAuthorizedPlayerId = (
+      await db.run(
+        'INSERT INTO players (name, email, cellphone, password, role) VALUES (?, ?, ?, ?, ?)',
+        [
+          playerData.name,
+          'new email',
+          playerData.cellphone,
+          hashedPassword,
+          'player',
+        ]
+      )
+    ).lastID;
+
+    const token = generateToken({ id: unAuthorizedPlayerId, role: 'player' });
+
+    const updatedInfo = {
+      name: 'Updated Player Two',
+      email: 'updatedplayertwo@example.com',
+      cellphone: '+1111111111',
+    };
+
+    const res = await supertest(app)
+      .put(`/players/${playerToUpdate}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send(updatedInfo);
+
+    expect(res.status).toEqual(403);
+    expect(res.body.message).toEqual(
+      "You are not authorized to update this player's information."
+    );
   });
 
   it('should delete a player', async () => {
