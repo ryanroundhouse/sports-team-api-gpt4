@@ -9,6 +9,7 @@ import {
   updatePlayer,
   deletePlayer,
 } from '../dataAccess/playerData';
+import { getTeamsByPlayerId } from '../dataAccess/teamData';
 
 const playerController = {
   async create(req: Request, res: Response, db: Database) {
@@ -62,15 +63,43 @@ const playerController = {
 
   async readOne(req: Request, res: Response, db: Database) {
     const { id } = req.params;
+    const userId = req.userId; // Get the authenticated user's ID from the request
+    const userRole = req.userRole; // Get the authenticated user's role from the request
 
     try {
-      const player = await getPlayerById(db, Number(id));
+      if (userRole === 'admin') {
+        const player = await getPlayerById(db, Number(id));
 
-      if (!player) {
-        return res.status(404).send({ message: 'Player not found.' });
+        if (!player) {
+          return res.status(404).send({ message: 'Player not found.' });
+        }
+
+        res.status(200).send(player);
+      } else {
+        // If the user is not an admin, only retrieve their own player object and the players from their teams
+        const player = await getPlayerById(db, Number(id));
+
+        if (!player) {
+          return res.status(404).send({ message: 'Player not found.' });
+        }
+
+        if (player.id === userId) {
+          res.status(200).send(player);
+        } else {
+          const teams = await getTeamsByPlayerId(db, userId);
+          const isTeamMember = teams.some(
+            (team) => team.playerId === player.id
+          );
+
+          if (isTeamMember) {
+            res.status(200).send(player);
+          } else {
+            res
+              .status(403)
+              .send({ message: 'Forbidden: Insufficient permissions' });
+          }
+        }
       }
-
-      res.status(200).send(player);
     } catch (error) {
       res
         .status(500)

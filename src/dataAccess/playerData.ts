@@ -1,50 +1,52 @@
-import { Database } from 'sqlite'
-import { hashPassword, validatePassword } from '../auth'
+import { Database } from 'sqlite';
+import { hashPassword, validatePassword } from '../auth';
 
 export async function createPlayer(
   db: Database,
   name: string,
   email: string,
   cellphone: string,
-  password: string,
+  password: string
 ) {
-  const hashedPassword = await hashPassword(password)
+  const hashedPassword = await hashPassword(password);
   const result = await db.run(
     'INSERT INTO players (name, email, cellphone, password, role) VALUES (?, ?, ?, ?, ?)',
-    [name, email, cellphone, hashedPassword, 'player'],
-  )
+    [name, email, cellphone, hashedPassword, 'player']
+  );
 
-  const newPlayerId = result.lastID
+  const newPlayerId = result.lastID;
   const newPlayer = await db.get(
     'SELECT id, name, email, cellphone FROM players WHERE id = ?',
-    newPlayerId,
-  )
+    newPlayerId
+  );
 
-  return newPlayer
+  return newPlayer;
 }
 
 export async function getPlayerByEmail(db: Database, email: string) {
   const user = await db.get(
     'SELECT id, name, email, cellphone, password, role FROM players WHERE email = ?',
-    email,
-  )
+    email
+  );
 
-  return user
+  return user;
 }
 
 export async function getPlayerById(db: Database, id: number) {
   const player = await db.get(
     'SELECT id, name, email, cellphone FROM players WHERE id = ?',
-    id,
-  )
+    id
+  );
 
-  return player
+  return player;
 }
 
 export async function getPlayers(db: Database) {
-  const players = await db.all('SELECT id, name, email, cellphone FROM players')
+  const players = await db.all(
+    'SELECT id, name, email, cellphone FROM players'
+  );
 
-  return players
+  return players;
 }
 
 export async function updatePlayer(
@@ -52,28 +54,39 @@ export async function updatePlayer(
   id: number,
   name: string,
   email: string,
-  cellphone: string,
+  cellphone: string
 ) {
   await db.run(
     'UPDATE players SET name = ?, email = ?, cellphone = ? WHERE id = ?',
-    [name, email, cellphone, id],
-  )
+    [name, email, cellphone, id]
+  );
 
   const updatedPlayer = await db.get(
     'SELECT id, name, email, cellphone FROM players WHERE id = ?',
-    id,
-  )
+    id
+  );
 
-  return updatedPlayer
+  return updatedPlayer;
+}
+
+export async function promoteUserToAdmin(db: Database, id: number) {
+  await db.run('UPDATE players SET role = ? WHERE id = ?', ['admin', id]);
+
+  const promotedPlayer = await db.get(
+    'SELECT id, name, email, cellphone, role FROM players WHERE id = ?',
+    id
+  );
+
+  return promotedPlayer;
 }
 
 export async function deletePlayer(db: Database, id: number) {
   const deletedPlayer = await db.get(
     'SELECT id, name, email, cellphone FROM players WHERE id = ?',
-    id,
-  )
+    id
+  );
 
-  await db.run('DELETE FROM players WHERE id = ?', id)
+  await db.run('DELETE FROM players WHERE id = ?', id);
 
-  return deletedPlayer
+  return deletedPlayer;
 }

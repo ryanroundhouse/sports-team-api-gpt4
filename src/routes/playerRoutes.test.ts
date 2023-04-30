@@ -4,7 +4,7 @@ import initDatabase from '../db';
 import setupPlayerRoutes from './playerRoutes';
 import { Database } from 'sqlite';
 import { generateToken, hashPassword } from '../auth';
-import { createPlayer } from '../dataAccess/playerData';
+import { createPlayer, promoteUserToAdmin } from '../dataAccess/playerData';
 
 const app = express();
 app.use(express.json());
@@ -256,5 +256,99 @@ describe('Player routes', () => {
     expect(res.body.name).toEqual(playerData.name);
     expect(res.body.email).toEqual(playerData.email);
     expect(res.body.cellphone).toEqual(playerData.cellphone);
+  });
+});
+
+describe('GET /players/:id', () => {
+  let adminId;
+  let playerId;
+  let otherPlayerId;
+
+  beforeEach(async () => {
+    // Create players
+    adminId = (
+      await createPlayer(
+        db,
+        'Admin',
+        'admin@example.com',
+        '+1234567890',
+        await hashPassword('test123')
+      )
+    ).id;
+    await promoteUserToAdmin(db, adminId);
+    playerId = (
+      await createPlayer(
+        db,
+        'Player',
+        'player@example.com',
+        '+0987654321',
+        await hashPassword('test321')
+      )
+    ).id;
+    otherPlayerId = (
+      await createPlayer(
+        db,
+        'Other Player',
+        'otherplayer@example.com',
+        '+0987654321',
+        await hashPassword('test321')
+      )
+    ).id;
+  });
+
+  afterEach(async () => {
+    await db.run('DELETE FROM players');
+  });
+
+  it('should return a player if the user is an admin', async () => {
+    const token = generateToken({ id: adminId, role: 'admin' });
+
+    const res = await supertest(app)
+      .get(`/players/${playerId}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toEqual(200);
+    expect(res.body.id).toEqual(playerId);
+  });
+
+  it('should return a player if the user is the requested player', async () => {
+    const token = generateToken({ id: playerId, role: 'player' });
+
+    const res = await supertest(app)
+      .get(`/players/${playerId}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toEqual(200);
+    expect(res.body.id).toEqual(playerId);
+  });
+
+  it('should not return a player if the user is not an admin and not the requested player', async () => {
+    const token = generateToken({ id: otherPlayerId, role: 'player' });
+
+    const res = await supertest(app)
+      .get(`/players/${playerId}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toEqual(403);
+    expect(res.body.message).toEqual('Forbidden: Insufficient permissions');
+  });
+
+  it('should return 404 if the player does not exist', async () => {
+    const token = generateToken({ id: adminId, role: 'admin' });
+
+    const nonExistentPlayerId = 999;
+    const res = await supertest(app)
+      .get(`/players/${nonExistentPlayerId}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toEqual(404);
+    expect(res.body.message).toEqual('Player not found.');
+  });
+
+  it('should not return a player if the user is not authenticated', async () => {
+    const res = await supertest(app).get(`/players/${playerId}`);
+
+    expect(res.status).toEqual(401);
+    expect(res.body.message).toEqual('No token provided.');
   });
 });
