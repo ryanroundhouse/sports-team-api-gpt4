@@ -16,7 +16,7 @@ import {
   createTeamMembership,
   getTeamMembershipsByTeam,
 } from '../dataAccess/teamMembershipData'
-import { createGame, getAllGames } from '../dataAccess/gameData'
+import { createGame, getAllGames, getGameById } from '../dataAccess/gameData'
 import { Game } from '../models'
 
 const app = express()
@@ -339,5 +339,106 @@ describe('PUT /games/:id', () => {
 
     expect(res.status).toEqual(403)
     expect(res.body.message).toEqual('Only the team captain can update a game.')
+  })
+})
+
+describe('DELETE /games/:id', () => {
+  const captainData = {
+    playerId: 1,
+    name: 'Captain',
+    email: 'captain@example.com',
+    cellphone: '+1234567890',
+    password: 'test123',
+    role: 'player',
+  }
+
+  const teamData = {
+    name: 'Test Team',
+  }
+
+  const gameData = {
+    location: 'Test Location',
+    opposingTeam: 'Test Opposing Team',
+    time: '2023-05-01T18:00:00.000Z',
+    notes: 'Test Notes',
+    teamId: 1,
+  }
+
+  let captainId
+  let nonCaptainId
+  let teamId
+  let gameId
+
+  beforeEach(async () => {
+    captainId = (
+      await createPlayer(
+        db,
+        captainData.name,
+        captainData.email,
+        captainData.cellphone,
+        await hashPassword(captainData.password),
+      )
+    ).id
+
+    nonCaptainId = (
+      await createPlayer(
+        db,
+        'Non-Captain',
+        'non-captain@example.com',
+        '+1234567891',
+        await hashPassword('test123'),
+      )
+    ).id
+
+    teamId = await createTeam(db, teamData.name)
+    gameData.teamId = teamId
+
+    await createTeamMembership(db, teamId, captainId, true)
+    await createTeamMembership(db, teamId, nonCaptainId, false)
+
+    const gameData1: Game = {
+      id: 0, // This will be replaced by the auto-incrementing ID in the database.
+      location: 'Test Location 1',
+      opposingTeam: 'Test Opposing Team 1',
+      time: new Date('2023-05-01T18:00:00.000Z'),
+      notes: 'Test Notes 1',
+      teamId: teamId,
+    }
+
+    gameId = (await createGame(db, gameData1)).id
+  })
+
+  afterEach(async () => {
+    await db.run('DELETE FROM teams')
+    await db.run('DELETE FROM players')
+    await db.run('DELETE FROM team_memberships')
+    await db.run('DELETE FROM games')
+  })
+
+  it('should delete the game if the user is the team captain', async () => {
+    const token = generateToken({ id: captainId, role: 'player' })
+
+    const res = await supertest(app)
+      .delete(`/games/${gameId}`)
+      .set('Authorization', `Bearer ${token}`)
+
+    const games = await getGameById(db, gameId)
+
+    expect(res.status).toEqual(200)
+    expect(games).toBe(undefined)
+  })
+
+  it('should not delete the game if the user is not the team captain', async () => {
+    const token = generateToken({ id: nonCaptainId, role: 'player' })
+
+    const res = await supertest(app)
+      .delete(`/games/${gameId}`)
+      .set('Authorization', `Bearer ${token}`)
+
+    const games = await getGameById(db, gameId)
+
+    expect(res.status).toEqual(403)
+    expect(res.body.message).toEqual('Only the team captain can delete a game.')
+    expect(games).toBeDefined()
   })
 })

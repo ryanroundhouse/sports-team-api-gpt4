@@ -98,7 +98,8 @@ const gameController = {
     const userId = req.userId
     const { id } = req.params
     try {
-      const isCaptain = await isUserCaptainOfTeam(db, userId, Number(id))
+      const game = await gameData.getGameById(db, parseInt(id))
+      const isCaptain = await isUserCaptainOfTeam(db, userId, game.team_id)
 
       if (!isCaptain) {
         return res
