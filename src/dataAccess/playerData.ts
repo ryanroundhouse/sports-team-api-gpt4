@@ -80,6 +80,19 @@ export async function promoteUserToAdmin(db: Database, id: number) {
   return promotedPlayer;
 }
 
+export async function getPlayersByTeamIds(db: Database, teamIds: number[]) {
+  if (teamIds.length === 0) {
+    return [];
+  }
+
+  const placeholders = teamIds.map(() => '?').join(',');
+  const query = `SELECT DISTINCT p.* FROM players p
+                 JOIN team_memberships tm ON p.id = tm.player_id
+                 WHERE tm.team_id IN (${placeholders})`;
+
+  return await db.all(query, teamIds);
+}
+
 export async function deletePlayer(db: Database, id: number) {
   const deletedPlayer = await db.get(
     'SELECT id, name, email, cellphone FROM players WHERE id = ?',

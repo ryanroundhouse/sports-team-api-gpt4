@@ -8,6 +8,7 @@ import {
   getPlayers,
   updatePlayer,
   deletePlayer,
+  getPlayersByTeamIds,
 } from '../dataAccess/playerData';
 import { getTeamsByPlayerId } from '../dataAccess/teamData';
 
@@ -108,8 +109,25 @@ const playerController = {
   },
 
   async readMany(req: Request, res: Response, db: Database) {
+    const userId = req.userId;
+    const userRole = req.userRole;
+
     try {
-      const players = await getPlayers(db);
+      let players;
+
+      if (userRole === 'admin') {
+        players = await getPlayers(db);
+      } else if (userRole === 'player') {
+        const teams = await getTeamsByPlayerId(db, userId);
+        const teamIds = teams.map((team) => team.id);
+
+        const playersFromTeams = await getPlayersByTeamIds(db, teamIds);
+        players = [...playersFromTeams];
+        if (playersFromTeams.length <= 0) {
+          const ownPlayer = await getPlayerById(db, userId);
+          players = [...players, ownPlayer];
+        }
+      }
 
       res.status(200).send(players);
     } catch (error) {

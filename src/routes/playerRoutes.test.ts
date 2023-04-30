@@ -5,6 +5,8 @@ import setupPlayerRoutes from './playerRoutes';
 import { Database } from 'sqlite';
 import { generateToken, hashPassword } from '../auth';
 import { createPlayer, promoteUserToAdmin } from '../dataAccess/playerData';
+import { createTeam } from '../dataAccess/teamData';
+import { createTeamMembership } from '../dataAccess/teamMembershipData';
 
 const app = express();
 app.use(express.json());
@@ -132,10 +134,10 @@ describe('Player routes', () => {
         'janedoe@example.com',
         '+1234567891',
         hashedPassword,
-        'player',
+        'admin',
       ]
     );
-    const token = generateToken({ id: lastID, role: 'player' });
+    const token = generateToken({ id: lastID, role: 'admin' });
 
     const res = await supertest(app)
       .get('/players')
@@ -347,6 +349,109 @@ describe('GET /players/:id', () => {
 
   it('should not return a player if the user is not authenticated', async () => {
     const res = await supertest(app).get(`/players/${playerId}`);
+
+    expect(res.status).toEqual(401);
+    expect(res.body.message).toEqual('No token provided.');
+  });
+});
+
+describe('GET /players', () => {
+  let adminId;
+  let playerWithoutTeam;
+  let playerId;
+  let teamId;
+
+  beforeEach(async () => {
+    adminId = (
+      await createPlayer(
+        db,
+        'Admin',
+        'admin@example.com',
+        '+1111111111',
+        await hashPassword('admin123')
+      )
+    ).id;
+    await promoteUserToAdmin(db, adminId);
+
+    playerId = (
+      await createPlayer(
+        db,
+        'Player',
+        'player@example.com',
+        '+2222222222',
+        await hashPassword('player123')
+      )
+    ).id;
+
+    playerWithoutTeam = (
+      await createPlayer(
+        db,
+        'Player',
+        'noteam@example.com',
+        '+2222222222',
+        await hashPassword('player123')
+      )
+    ).id;
+
+    teamId = await createTeam(db, 'Test Team');
+    await createTeamMembership(db, teamId, playerId, false);
+  });
+
+  afterEach(async () => {
+    await db.run('DELETE FROM players');
+    await db.run('DELETE FROM teams');
+    await db.run('DELETE FROM team_memberships');
+  });
+
+  it('should return all players for an admin', async () => {
+    const token = generateToken({ id: adminId, role: 'admin' });
+
+    const res = await supertest(app)
+      .get('/players')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toEqual(200);
+    expect(res.body.length).toEqual(3);
+    expect(res.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: adminId }),
+        expect.objectContaining({ id: playerId }),
+      ])
+    );
+  });
+
+  it('should return players from teams a player is a member of and their own player object for a non-admin player', async () => {
+    const token = generateToken({ id: playerId, role: 'player' });
+
+    const res = await supertest(app)
+      .get('/players')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toEqual(200);
+    expect(res.body.length).toEqual(1);
+    expect(res.body).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: playerId })])
+    );
+  });
+
+  it('should return the player themselves even if theyre not on a team', async () => {
+    const token = generateToken({ id: playerWithoutTeam, role: 'player' });
+
+    const res = await supertest(app)
+      .get('/players')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toEqual(200);
+    expect(res.body.length).toEqual(1);
+    expect(res.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: playerWithoutTeam }),
+      ])
+    );
+  });
+
+  it('should not return players if the user is not authenticated', async () => {
+    const res = await supertest(app).get('/players');
 
     expect(res.status).toEqual(401);
     expect(res.body.message).toEqual('No token provided.');
