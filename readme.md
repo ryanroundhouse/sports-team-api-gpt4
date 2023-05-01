@@ -18,15 +18,17 @@ Some endpoints require authentication. To authenticate, include an `Authorizatio
   - `password`: string (required) - Player's password. Must be at least 6 characters long.
 - Response: The created player object.
 
-`POST /players HTTP/1.1
+```
+POST /players HTTP/1.1
 Content-Type: application/json
 
 {
-"name": "John Doe",
-"email": "john@example.com",
-"cellphone": "+1234567890",
-"password": "test123"
-}`
+    "name": "John Doe",
+    "email": "john@example.com",
+    "cellphone": "+1234567890",
+    "password": "test123"
+}
+```
 
 ### Login a player
 
@@ -36,13 +38,15 @@ Content-Type: application/json
   - `password`: string (required) - Player's password.
 - Response: The authenticated player object and an access token.
 
-`POST /players/login HTTP/1.1
+```
+POST /players/login HTTP/1.1
 Content-Type: application/json
 
 {
-"email": "john@example.com",
-"password": "test123"
-}`
+    "email": "john@example.com",
+    "password": "test123"
+}
+```
 
 ### Get all players
 
@@ -50,7 +54,9 @@ Content-Type: application/json
 - Authentication: Required.
 - Response: An array of player objects.
 
-`GET /players HTTP/1.1 Authorization: Bearer <access_token>`
+```
+GET /players HTTP/1.1 Authorization: Bearer <access_token>
+```
 
 ### Get a specific player by ID
 
@@ -60,7 +66,9 @@ Content-Type: application/json
   - `id`: number (required) - The ID of the player to retrieve.
 - Response: The requested player object.
 
-`GET /players/1 HTTP/1.1 Authorization: Bearer <access_token>`
+```
+GET /players/1 HTTP/1.1 Authorization: Bearer <access_token>
+```
 
 ### Update a specific player by ID
 
@@ -74,15 +82,17 @@ Content-Type: application/json
   - `cellphone`: string (required) - Player's updated cellphone number.
 - Response: The updated player object.
 
-`PUT /players/1 HTTP/1.1
+```
+PUT /players/1 HTTP/1.1
 Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-"name": "John Doe Updated",
-"email": "john_updated@example.com",
-"cellphone": "+0987654321"
-}`
+    "name": "John Doe Updated",
+    "email": "john_updated@example.com",
+    "cellphone": "+0987654321"
+}
+```
 
 ### Delete a specific player by ID
 
@@ -92,6 +102,8 @@ Content-Type: application/json
   - `id`: number (required) - The ID of the player to delete.
 - Response: The deleted player object.
 
-`DELETE /players/1 HTTP/1.1 Authorization: Bearer <access_token>`
+```
+DELETE /players/1 HTTP/1.1 Authorization: Bearer <access_token>
+```
 
 Please note that the request validation information is now included in the documentation for each endpoint. Ensure you follow the validation requirements
