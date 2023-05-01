@@ -40,11 +40,29 @@ const gameController = {
 
   async readOne(req: Request, res: Response, db: Database) {
     const { id } = req.params
+    const userId = req.userId
+    const isAdmin = req.userRole === 'admin'
+
     try {
       const game = await gameData.getGameById(db, Number(id))
+
       if (!game) {
         return res.status(404).send({ message: 'Game not found.' })
       }
+
+      if (!isAdmin) {
+        const memberships = await getTeamMembershipsByPlayerId(db, userId)
+        const isTeamMember = memberships.some(
+          (membership) => membership.teamId === game.team_id,
+        )
+
+        if (!isTeamMember) {
+          return res
+            .status(403)
+            .send({ message: 'You are not authorized to view this game.' })
+        }
+      }
+
       res.status(200).send(game)
     } catch (error) {
       res

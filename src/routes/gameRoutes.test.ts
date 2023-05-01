@@ -14,6 +14,7 @@ import {
 import { createTeam, getTeams } from '../dataAccess/teamData'
 import {
   createTeamMembership,
+  getTeamMembershipsByPlayerId,
   getTeamMembershipsByTeam,
 } from '../dataAccess/teamMembershipData'
 import { createGame, getAllGames, getGameById } from '../dataAccess/gameData'
@@ -271,56 +272,6 @@ describe('GET /games', () => {
   })
 })
 
-describe('GET /games/:id', () => {
-  const gameData1: Game = {
-    id: 0, // This will be replaced by the auto-incrementing ID in the database.
-    location: 'Test Location 1',
-    opposingTeam: 'Test Opposing Team 1',
-    time: new Date('2023-05-01T18:00:00.000Z'),
-    notes: 'Test Notes 1',
-    teamId: 1,
-  }
-
-  let gameId1
-
-  beforeEach(async () => {
-    // Create a game
-    const game1 = await createGame(db, gameData1)
-    gameId1 = game1.id
-  })
-
-  afterEach(async () => {
-    // Clean up the test data after each test
-    await db.run('DELETE FROM games')
-  })
-
-  it('should return a game by its ID', async () => {
-    const token = generateToken({ id: 1, role: 'player' })
-
-    const res = await supertest(app)
-      .get(`/games/${gameId1}`)
-      .set('Authorization', `Bearer ${token}`)
-
-    expect(res.status).toEqual(200)
-    expect(res.body.id).toEqual(gameId1)
-    expect(res.body.location).toEqual(gameData1.location)
-    expect(res.body.opposing_team).toEqual(gameData1.opposingTeam)
-    expect(res.body.notes).toEqual(gameData1.notes)
-    expect(res.body.team_id).toEqual(gameData1.teamId)
-  })
-
-  it('should return a 404 error if the game is not found', async () => {
-    const token = generateToken({ id: 1, role: 'player' })
-
-    const res = await supertest(app)
-      .get('/games/9999')
-      .set('Authorization', `Bearer ${token}`)
-
-    expect(res.status).toEqual(404)
-    expect(res.body.message).toEqual('Game not found.')
-  })
-})
-
 describe('PUT /games/:id', () => {
   const captainData = {
     playerId: 1,
@@ -520,5 +471,134 @@ describe('DELETE /games/:id', () => {
     expect(res.status).toEqual(403)
     expect(res.body.message).toEqual('Only the team captain can delete a game.')
     expect(games).toBeDefined()
+  })
+})
+
+describe('GET /games/:id', () => {
+  const adminData = {
+    playerId: 1,
+    name: 'Admin',
+    email: 'admin@example.com',
+    cellphone: '+1234567890',
+    password: 'test123',
+    role: 'admin',
+  }
+
+  const playerData = {
+    playerId: 2,
+    name: 'Player',
+    email: 'player@example.com',
+    cellphone: '+1234567891',
+    password: 'test123',
+    role: 'player',
+  }
+
+  const teamData = {
+    name: 'Test Team',
+  }
+
+  const gameData: Game = {
+    location: 'Test Location',
+    opposingTeam: 'Test Opposing Team',
+    time: new Date('2023-05-01T18:00:00.000Z'),
+    notes: 'Test Notes',
+    teamId: 1,
+    id: 0, // this will be overwritten
+  }
+
+  let adminId
+  let playerId
+  let teamId
+  let gameId
+
+  beforeEach(async () => {
+    adminId = (
+      await createPlayer(
+        db,
+        adminData.name,
+        adminData.email,
+        adminData.cellphone,
+        await hashPassword(adminData.password),
+      )
+    ).id
+
+    playerId = (
+      await createPlayer(
+        db,
+        playerData.name,
+        playerData.email,
+        playerData.cellphone,
+        await hashPassword(playerData.password),
+      )
+    ).id
+
+    teamId = await createTeam(db, teamData.name)
+    gameData.teamId = teamId
+
+    await createTeamMembership(db, teamId, playerId, false)
+
+    gameId = (await createGame(db, gameData)).id
+  })
+
+  afterEach(async () => {
+    await db.run('DELETE FROM teams')
+    await db.run('DELETE FROM players')
+    await db.run('DELETE FROM team_memberships')
+    await db.run('DELETE FROM games')
+  })
+
+  it('should return the game if the user is an admin', async () => {
+    const token = generateToken({ id: adminId, role: 'admin' })
+
+    const res = await supertest(app)
+      .get(`/games/${gameId}`)
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toEqual(200)
+    expect(res.body.id).toEqual(gameId)
+  })
+
+  it('should return the game if the user is a team member', async () => {
+    const token = generateToken({ id: playerId, role: 'player' })
+
+    const res = await supertest(app)
+      .get(`/games/${gameId}`)
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toEqual(200)
+    expect(res.body.id).toEqual(gameId)
+  })
+
+  it('should return a 403 error if the user is not a team member', async () => {
+    const nonTeamMemberId = (
+      await createPlayer(
+        db,
+        'Non-Team Member',
+        'non-team-member@example.com',
+        '+1234567892',
+        await hashPassword('test123'),
+      )
+    ).id
+    const token = generateToken({ id: nonTeamMemberId, role: 'player' })
+
+    const res = await supertest(app)
+      .get(`/games/${gameId}`)
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toEqual(403)
+    expect(res.body.message).toEqual(
+      'You are not authorized to view this game.',
+    )
+  })
+
+  it('should return a 404 error if the game does not exist', async () => {
+    const nonExistentGameId = 999
+    const token = generateToken({ id: playerId, role: 'player' })
+    const res = await supertest(app)
+      .get(`/games/${nonExistentGameId}`)
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toEqual(404)
+    expect(res.body.message).toEqual('Game not found.')
   })
 })
