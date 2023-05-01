@@ -162,23 +162,103 @@ describe('GET /games', () => {
     notes: 'Test Notes 2',
     teamId: 1,
   }
-  let gameId1, gameId2
+  const otherTeamGameData: Game = {
+    id: 0, // This will be replaced by the auto-incrementing ID in the database.
+    location: 'Test Location 2',
+    opposingTeam: 'Test Opposing Team 2',
+    time: new Date('2023-05-02T18:00:00.000Z'),
+    notes: 'Test Notes 2',
+    teamId: 1,
+  }
+  let gameId1,
+    gameId2,
+    gameId3,
+    captainId,
+    nonCaptainId,
+    teamId,
+    otherTeamId,
+    otherTeamPlayerId
 
   beforeEach(async () => {
+    const captain = await createPlayer(
+      db,
+      'Captain',
+      'captain@example.com',
+      '+1234567890',
+      await hashPassword('test123'),
+    )
+    captainId = captain.id
+    const nonCaptain = await createPlayer(
+      db,
+      'NonCaptain',
+      'nonCaptain@example.com',
+      '+1234567890',
+      await hashPassword('test123'),
+    )
+    nonCaptainId = nonCaptain.id
+    const otherTeamPlayer = await createPlayer(
+      db,
+      'Other',
+      'otherplayer@example.com',
+      '+1234567890',
+      await hashPassword('test123'),
+    )
+    otherTeamPlayerId = otherTeamPlayer.id
+    otherTeamGameData.id = otherTeamId
+
+    // Create team
+    teamId = await createTeam(db, 'Test Team')
+    otherTeamId = await createTeam(db, 'Other team')
+
     // Create games
+    gameData1.teamId = teamId
     const game1 = await createGame(db, gameData1)
     gameId1 = game1.id
+    gameData2.teamId = teamId
     const game2 = await createGame(db, gameData2)
     gameId2 = game2.id
+    otherTeamGameData.teamId = otherTeamId
+    const game3 = await createGame(db, otherTeamGameData)
+    gameId3 = game3.id
+
+    const captainMembershipId = await createTeamMembership(
+      db,
+      teamId,
+      captainId,
+      true,
+    )
+    const nonCaptainMembershipId = await createTeamMembership(
+      db,
+      teamId,
+      nonCaptainId,
+      false,
+    )
   })
 
   afterEach(async () => {
     // Clean up the test data after each test
+    await db.run('DELETE FROM teams')
+    await db.run('DELETE FROM players')
+    await db.run('DELETE FROM team_memberships')
     await db.run('DELETE FROM games')
   })
 
-  it('should return all games', async () => {
-    const token = generateToken({ id: 1, role: 'player' })
+  it('should return all games if youre admin', async () => {
+    const token = generateToken({ id: captainId, role: 'admin' })
+
+    const res = await supertest(app)
+      .get('/games')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toEqual(200)
+    expect(res.body.length).toEqual(3)
+    expect(res.body[0].id).toEqual(gameId1)
+    expect(res.body[1].id).toEqual(gameId2)
+    expect(res.body[2].id).toEqual(gameId3)
+  })
+
+  it('should only return your teams games if not an admin', async () => {
+    const token = generateToken({ id: nonCaptainId, role: 'player' })
 
     const res = await supertest(app)
       .get('/games')

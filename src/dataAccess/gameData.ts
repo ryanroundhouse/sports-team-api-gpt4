@@ -29,6 +29,30 @@ export async function updateGame(db: Database, id: number, game: Game) {
   return getGameById(db, id)
 }
 
+export async function getGamesByTeamIds(
+  db: Database,
+  teamIds: number[],
+): Promise<Game[]> {
+  if (teamIds.length === 0) {
+    return []
+  }
+
+  const placeholders = teamIds.map(() => '?').join(',')
+  const sql = `
+    SELECT
+      id,
+      location,
+      opposing_team AS opposingTeam,
+      time,
+      notes,
+      team_id AS teamId
+    FROM games
+    WHERE team_id IN (${placeholders})
+  `
+
+  return await db.all(sql, teamIds)
+}
+
 export async function deleteGame(db: Database, id: number) {
   const deletedGame = await getGameById(db, id)
 

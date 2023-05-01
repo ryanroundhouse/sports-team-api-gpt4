@@ -1,9 +1,12 @@
 import { Request, Response } from 'express'
 import { Database } from 'sqlite'
 import * as gameData from '../dataAccess/gameData'
-import { isUserCaptainOfTeam } from '../dataAccess/teamMembershipData'
+import {
+  getTeamMembershipsByPlayerId,
+  isUserCaptainOfTeam,
+} from '../dataAccess/teamMembershipData'
 import { Game } from '../models'
-import { updateGame } from '../dataAccess/gameData'
+import { getGamesByTeamIds, updateGame } from '../dataAccess/gameData'
 
 const gameController = {
   async create(req: Request, res: Response, db: Database) {
@@ -52,7 +55,19 @@ const gameController = {
 
   async readMany(req: Request, res: Response, db: Database) {
     try {
-      const games = await gameData.getAllGames(db)
+      const userId = req.userId // Get the user ID from the decoded token
+      const userRole = req.userRole // Get the user role from the decoded token
+
+      let games
+
+      if (userRole === 'admin') {
+        games = await gameData.getAllGames(db)
+      } else {
+        const teamMemberships = await getTeamMembershipsByPlayerId(db, userId)
+        const teamIds = teamMemberships.map((membership) => membership.teamId)
+        games = await getGamesByTeamIds(db, teamIds)
+      }
+
       res.status(200).send(games)
     } catch (error) {
       res

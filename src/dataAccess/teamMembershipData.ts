@@ -1,4 +1,5 @@
 import { Database } from 'sqlite'
+import { TeamMembership } from '../models'
 
 export const createTeamMembership = async (
   db: Database,
@@ -106,6 +107,24 @@ export const isUserCaptainOfTeam = async (
   )
 
   return !!captainMembership
+}
+
+export async function getTeamMembershipsByPlayerId(
+  db: Database,
+  playerId: number,
+): Promise<TeamMembership[]> {
+  return await db.all(
+    `
+      SELECT
+        id,
+        team_id AS teamId,
+        player_id AS playerId,
+        is_captain AS isCaptain
+      FROM team_memberships
+      WHERE player_id = ?
+    `,
+    playerId,
+  )
 }
 
 export const deleteTeamMembership = async (
