@@ -1,138 +1,156 @@
-import { Request, Response } from 'express'
-import { Database } from 'sqlite'
+import { Request, Response } from 'express';
+import { Database } from 'sqlite';
 import {
   createTeamMembership,
   deleteTeamMembershipsByTeam,
   isUserCaptainOfTeam,
-} from '../dataAccess/teamMembershipData'
+} from '../dataAccess/teamMembershipData';
 import {
   createTeam,
   getTeams,
   getTeamById,
   updateTeam,
   deleteTeam,
-} from '../dataAccess/teamData'
+} from '../dataAccess/teamData';
 
 const teamController = {
-  async create(req: Request, res: Response, db: Database) {
-    const { name } = req.body
-    const userId = req.userId
+  async create(req: Request, res: Response, db: Database): Promise<Response> {
+    const { name } = req.body;
+    const userId = req.userId;
 
     try {
-      const newTeamId = await createTeam(db, name)
+      if (!userId) {
+        return res
+          .status(403)
+          .send({ message: 'Unauthorized. Login before making this call.' });
+      }
+      const newTeamId = await createTeam(db, name);
+      if (!newTeamId) {
+        throw 'unable to create team.';
+      }
 
-      const newTeam = await getTeamById(db, newTeamId)
+      const newTeam = await getTeamById(db, newTeamId);
 
       const newMembership = await createTeamMembership(
         db,
         newTeamId,
         userId,
-        true,
-      )
+        true
+      );
 
-      res.status(201).send(newTeam)
+      return res.status(201).send(newTeam);
     } catch (error) {
-      res
+      return res
         .status(500)
-        .send({ message: 'An error occurred while creating the team.' })
+        .send({ message: 'An error occurred while creating the team.' });
     }
   },
 
-  async readMany(req: Request, res: Response, db: Database) {
+  async readMany(req: Request, res: Response, db: Database): Promise<Response> {
     try {
-      const teams = await getTeams(db)
-      res.status(200).send(teams)
+      const teams = await getTeams(db);
+      return res.status(200).send(teams);
     } catch (error) {
-      res
+      return res
         .status(500)
-        .send({ message: 'An error occurred while fetching teams.' })
+        .send({ message: 'An error occurred while fetching teams.' });
     }
   },
 
-  async readOne(req: Request, res: Response, db: Database) {
-    const { id } = req.params
+  async readOne(req: Request, res: Response, db: Database): Promise<Response> {
+    const { id } = req.params;
 
     try {
-      const team = await getTeamById(db, Number(id))
+      const team = await getTeamById(db, Number(id));
 
       if (!team) {
-        return res.status(404).send({ message: 'Team not found.' })
+        return res.status(404).send({ message: 'Team not found.' });
       }
 
-      res.status(200).send(team)
+      return res.status(200).send(team);
     } catch (error) {
-      res
+      return res
         .status(500)
-        .send({ message: 'An error occurred while fetching the team.' })
+        .send({ message: 'An error occurred while fetching the team.' });
     }
   },
 
-  async update(req: Request, res: Response, db: Database) {
-    const { id } = req.params
-    const { name } = req.body
-    const userId = req.userId
+  async update(req: Request, res: Response, db: Database): Promise<Response> {
+    const { id } = req.params;
+    const { name } = req.body;
+    const userId = req.userId;
 
     try {
-      const isCaptain = await isUserCaptainOfTeam(db, userId, Number(id))
+      if (!userId) {
+        return res
+          .status(403)
+          .send({ message: 'Unauthorized. Login before making this call.' });
+      }
+      const isCaptain = await isUserCaptainOfTeam(db, userId, Number(id));
 
       if (!isCaptain) {
         return res
           .status(403)
-          .send({ message: 'Only the team captain can update the team.' })
+          .send({ message: 'Only the team captain can update the team.' });
       }
 
-      await updateTeam(db, Number(id), name)
+      await updateTeam(db, Number(id), name);
 
-      const updatedTeam = await getTeamById(db, Number(id))
+      const updatedTeam = await getTeamById(db, Number(id));
 
       if (!updatedTeam) {
-        return res.status(404).send({ message: 'Team not found.' })
+        return res.status(404).send({ message: 'Team not found.' });
       }
 
-      res.status(200).send(updatedTeam)
+      return res.status(200).send(updatedTeam);
     } catch (error) {
-      res
+      return res
         .status(500)
-        .send({ message: 'An error occurred while updating the team.' })
+        .send({ message: 'An error occurred while updating the team.' });
     }
   },
 
-  async delete(req: Request, res: Response, db: Database) {
-    const { id } = req.params
-    const userId = req.userId
+  async delete(req: Request, res: Response, db: Database): Promise<Response> {
+    const { id } = req.params;
+    const userId = req.userId;
 
     try {
-      const deletedTeam = await getTeamById(db, Number(id))
+      if (!userId) {
+        return res
+          .status(403)
+          .send({ message: 'Unauthorized. Login before making this call.' });
+      }
+      const deletedTeam = await getTeamById(db, Number(id));
 
       if (!deletedTeam) {
-        return res.status(404).send({ message: 'Team not found.' })
+        return res.status(404).send({ message: 'Team not found.' });
       }
 
       const isCaptainOfTeam = await isUserCaptainOfTeam(
         db,
         userId,
-        deletedTeam.id,
-      )
+        deletedTeam.id
+      );
 
       if (!isCaptainOfTeam) {
         return res.status(403).send({
           message: 'Only the team captain can delete the team.',
-        })
+        });
       }
 
       // Delete team memberships associated with the team
-      await deleteTeamMembershipsByTeam(db, parseInt(id))
+      await deleteTeamMembershipsByTeam(db, parseInt(id));
 
       // Delete the team
-      await deleteTeam(db, parseInt(id))
+      await deleteTeam(db, parseInt(id));
 
-      res.status(200).send(deletedTeam)
+      return res.status(200).send(deletedTeam);
     } catch (error) {
-      res
+      return res
         .status(500)
-        .send({ message: 'An error occurred while deleting the team.' })
+        .send({ message: 'An error occurred while deleting the team.' });
     }
   },
-}
+};
 
-export default teamController
+export default teamController;

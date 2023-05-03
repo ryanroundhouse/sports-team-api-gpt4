@@ -1,6 +1,6 @@
-import { Request, Response } from 'express'
-import { Database } from 'sqlite'
-import { hashPassword, validatePassword, generateToken } from '../auth'
+import { Request, Response } from 'express';
+import { Database } from 'sqlite';
+import { hashPassword, validatePassword, generateToken } from '../auth';
 import {
   createPlayer,
   getPlayerByEmail,
@@ -9,14 +9,18 @@ import {
   updatePlayer,
   deletePlayer,
   getPlayersByTeamIds,
-} from '../dataAccess/playerData'
-import { getTeamsByPlayerId } from '../dataAccess/teamData'
+} from '../dataAccess/playerData';
+import { getTeamsByPlayerId } from '../dataAccess/teamData';
+import {
+  getTeamMembershipsByPlayerId,
+  isUserCaptainOfTeam,
+} from '../dataAccess/teamMembershipData';
 
 const playerController = {
-  async create(req: Request, res: Response, db: Database) {
-    const { name, email, cellphone, password } = req.body
+  async create(req: Request, res: Response, db: Database): Promise<Response> {
+    const { name, email, cellphone, password } = req.body;
 
-    const hashedPassword = await hashPassword(password)
+    const hashedPassword = await hashPassword(password);
 
     try {
       const newPlayer = await createPlayer(
@@ -24,33 +28,33 @@ const playerController = {
         name,
         email,
         cellphone,
-        hashedPassword,
-      )
+        hashedPassword
+      );
 
-      res.status(201).send(newPlayer)
+      return res.status(201).send(newPlayer);
     } catch (error) {
-      res
+      return res
         .status(500)
-        .send({ message: 'An error occurred while creating the player.' })
+        .send({ message: 'An error occurred while creating the player.' });
     }
   },
 
   async login(req: Request, res: Response, db: Database) {
-    const { email, password } = req.body
+    const { email, password } = req.body;
 
-    const user = await getPlayerByEmail(db, email)
+    const user = await getPlayerByEmail(db, email);
 
     if (!user) {
-      return res.status(404).send({ message: 'User not found.' })
+      return res.status(404).send({ message: 'User not found.' });
     }
 
-    const isPasswordValid = await validatePassword(password, user.password)
+    const isPasswordValid = await validatePassword(password, user.password);
 
     if (!isPasswordValid) {
-      return res.status(401).send({ message: 'Invalid email or password.' })
+      return res.status(401).send({ message: 'Invalid email or password.' });
     }
 
-    const token = generateToken({ id: user.id, role: user.role })
+    const token = generateToken({ id: user.id, role: user.role });
 
     res.status(200).send({
       id: user.id,
@@ -59,92 +63,110 @@ const playerController = {
       cellphone: user.cellphone,
       role: user.role,
       token,
-    })
+    });
   },
 
-  async readOne(req: Request, res: Response, db: Database) {
-    const { id } = req.params
-    const userId = req.userId // Get the authenticated user's ID from the request
-    const userRole = req.userRole // Get the authenticated user's role from the request
+  async readOne(req: Request, res: Response, db: Database): Promise<Response> {
+    const { id } = req.params;
+    const userId = req.userId; // Get the authenticated user's ID from the request
+    const userRole = req.userRole; // Get the authenticated user's role from the request
 
     try {
+      if (!userId) {
+        return res
+          .status(403)
+          .send({ message: 'Unauthorized. Login before making this call.' });
+      }
       if (userRole === 'admin') {
-        const player = await getPlayerById(db, Number(id))
+        const player = await getPlayerById(db, Number(id));
 
         if (!player) {
-          return res.status(404).send({ message: 'Player not found.' })
+          return res.status(404).send({ message: 'Player not found.' });
         }
 
-        res.status(200).send(player)
+        return res.status(200).send(player);
       } else {
         // If the user is not an admin, only retrieve their own player object and the players from their teams
-        const player = await getPlayerById(db, Number(id))
+        const player = await getPlayerById(db, Number(id));
 
         if (!player) {
-          return res.status(404).send({ message: 'Player not found.' })
+          return res.status(404).send({ message: 'Player not found.' });
         }
 
         if (player.id === userId) {
-          res.status(200).send(player)
+          return res.status(200).send(player);
         } else {
-          const teams = await getTeamsByPlayerId(db, userId)
-          const isTeamMember = teams.some((team) => team.playerId === player.id)
+          const teams = await getTeamsByPlayerId(db, userId);
+          if (!teams) {
+            throw "couldn't find team";
+          }
+          const isTeamMember = teams.some(async (team) => {
+            return await isUserCaptainOfTeam(db, userId, team.id);
+          });
 
           if (isTeamMember) {
-            res.status(200).send(player)
+            return res.status(200).send(player);
           } else {
-            res
+            return res
               .status(403)
-              .send({ message: 'Forbidden: Insufficient permissions' })
+              .send({ message: 'Forbidden: Insufficient permissions' });
           }
         }
       }
     } catch (error) {
-      res
+      return res
         .status(500)
-        .send({ message: 'An error occurred while fetching the player.' })
+        .send({ message: 'An error occurred while fetching the player.' });
     }
   },
 
-  async readMany(req: Request, res: Response, db: Database) {
-    const userId = req.userId
-    const userRole = req.userRole
+  async readMany(req: Request, res: Response, db: Database): Promise<Response> {
+    const userId = req.userId;
+    const userRole = req.userRole;
 
     try {
-      let players
+      if (!userId) {
+        return res
+          .status(403)
+          .send({ message: 'Unauthorized. Login before making this call.' });
+      }
+      let players;
 
       if (userRole === 'admin') {
-        players = await getPlayers(db)
+        players = await getPlayers(db);
       } else if (userRole === 'player') {
-        const teams = await getTeamsByPlayerId(db, userId)
-        const teamIds = teams.map((team) => team.id)
+        const teams = await getTeamsByPlayerId(db, userId);
+        if (!teams) {
+          throw "can't get teams by playerId";
+        }
+        const teamIds = teams.map((team) => team.id);
 
-        const playersFromTeams = await getPlayersByTeamIds(db, teamIds)
-        players = [...playersFromTeams]
+        const playersFromTeams = await getPlayersByTeamIds(db, teamIds);
+        players = [...playersFromTeams];
         if (playersFromTeams.length <= 0) {
-          const ownPlayer = await getPlayerById(db, userId)
-          players = [...players, ownPlayer]
+          const ownPlayer = await getPlayerById(db, userId);
+          players = [...players, ownPlayer];
         }
       }
 
-      res.status(200).send(players)
+      return res.status(200).send(players);
     } catch (error) {
-      res
+      return res
         .status(500)
-        .send({ message: 'An error occurred while fetching players.' })
+        .send({ message: 'An error occurred while fetching players.' });
     }
   },
 
-  async update(req: Request, res: Response, db: Database) {
-    const { id } = req.params
-    const { name, email, cellphone } = req.body
-    const userId = req.userId // Get the user ID from the decoded token
+  async update(req: Request, res: Response, db: Database): Promise<Response> {
+    const { id } = req.params;
+    const { name, email, cellphone } = req.body;
+    const userId = req.userId; // Get the user ID from the decoded token
 
     // Check if the user is trying to update their own information
     if (Number(id) !== userId) {
       return res.status(403).send({
         message: "You are not authorized to update this player's information.",
-      })
+      });
     }
 
     try {
@@ -153,45 +175,45 @@ const playerController = {
         Number(id),
         name,
         email,
-        cellphone,
-      )
+        cellphone
+      );
 
       if (!updatedPlayer) {
-        return res.status(404).send({ message: 'Player not found.' })
+        return res.status(404).send({ message: 'Player not found.' });
       }
 
-      res.status(200).send(updatedPlayer)
+      return res.status(200).send(updatedPlayer);
     } catch (error) {
-      res
+      return res
         .status(500)
-        .send({ message: 'An error occurred while updating the player.' })
+        .send({ message: 'An error occurred while updating the player.' });
     }
   },
 
-  async delete(req: Request, res: Response, db: Database) {
-    const { id } = req.params
-    const userId = req.userId // Get the user ID from the decoded token
+  async delete(req: Request, res: Response, db: Database): Promise<Response> {
+    const { id } = req.params;
+    const userId = req.userId; // Get the user ID from the decoded token
 
     try {
       if (Number(id) !== userId) {
         return res.status(403).send({
           message: 'You are not authorized to delete this player.',
-        })
+        });
       }
 
-      const deletedPlayer = await deletePlayer(db, Number(id))
+      const deletedPlayer = await deletePlayer(db, Number(id));
 
       if (!deletedPlayer) {
-        return res.status(404).send({ message: 'Player not found.' })
+        return res.status(404).send({ message: 'Player not found.' });
       }
 
-      res.status(200).send(deletedPlayer)
+      return res.status(200).send(deletedPlayer);
     } catch (error) {
-      res
+      return res
         .status(500)
-        .send({ message: 'An error occurred while deleting the player.' })
+        .send({ message: 'An error occurred while deleting the player.' });
     }
   },
-}
+};
 
-export default playerController
+export default playerController;

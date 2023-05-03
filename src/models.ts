@@ -4,12 +4,13 @@ export interface Player {
   email: string;
   cellphone: string;
   password: string;
+  player: string;
+  role: string;
 }
 
 export interface Team {
   id: number;
   name: string;
-  captainId: number;
 }
 
 export interface TeamMembership {

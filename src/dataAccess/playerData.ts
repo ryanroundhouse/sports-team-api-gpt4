@@ -1,5 +1,6 @@
 import { Database } from 'sqlite';
 import { hashPassword, validatePassword } from '../auth';
+import { Player } from '../models';
 
 export async function createPlayer(
   db: Database,
@@ -7,7 +8,7 @@ export async function createPlayer(
   email: string,
   cellphone: string,
   password: string
-) {
+): Promise<Player | undefined> {
   const hashedPassword = await hashPassword(password);
   const result = await db.run(
     'INSERT INTO players (name, email, cellphone, password, role) VALUES (?, ?, ?, ?, ?)',
@@ -23,7 +24,10 @@ export async function createPlayer(
   return newPlayer;
 }
 
-export async function getPlayerByEmail(db: Database, email: string) {
+export async function getPlayerByEmail(
+  db: Database,
+  email: string
+): Promise<Player | undefined> {
   const user = await db.get(
     'SELECT id, name, email, cellphone, password, role FROM players WHERE email = ?',
     email
@@ -32,7 +36,10 @@ export async function getPlayerByEmail(db: Database, email: string) {
   return user;
 }
 
-export async function getPlayerById(db: Database, id: number) {
+export async function getPlayerById(
+  db: Database,
+  id: number
+): Promise<Player | undefined> {
   const player = await db.get(
     'SELECT id, name, email, cellphone FROM players WHERE id = ?',
     id
@@ -41,7 +48,7 @@ export async function getPlayerById(db: Database, id: number) {
   return player;
 }
 
-export async function getPlayers(db: Database) {
+export async function getPlayers(db: Database): Promise<Array<Player>> {
   const players = await db.all(
     'SELECT id, name, email, cellphone FROM players'
   );
@@ -55,7 +62,7 @@ export async function updatePlayer(
   name: string,
   email: string,
   cellphone: string
-) {
+): Promise<Player | undefined> {
   await db.run(
     'UPDATE players SET name = ?, email = ?, cellphone = ? WHERE id = ?',
     [name, email, cellphone, id]
@@ -69,7 +76,10 @@ export async function updatePlayer(
   return updatedPlayer;
 }
 
-export async function promoteUserToAdmin(db: Database, id: number) {
+export async function promoteUserToAdmin(
+  db: Database,
+  id: number
+): Promise<Player | undefined> {
   await db.run('UPDATE players SET role = ? WHERE id = ?', ['admin', id]);
 
   const promotedPlayer = await db.get(
@@ -80,7 +90,10 @@ export async function promoteUserToAdmin(db: Database, id: number) {
   return promotedPlayer;
 }
 
-export async function getPlayersByTeamIds(db: Database, teamIds: number[]) {
+export async function getPlayersByTeamIds(
+  db: Database,
+  teamIds: number[]
+): Promise<Array<Player>> {
   if (teamIds.length === 0) {
     return [];
   }
@@ -93,7 +106,10 @@ export async function getPlayersByTeamIds(db: Database, teamIds: number[]) {
   return await db.all(query, teamIds);
 }
 
-export async function deletePlayer(db: Database, id: number) {
+export async function deletePlayer(
+  db: Database,
+  id: number
+): Promise<Player | undefined> {
   const deletedPlayer = await db.get(
     'SELECT id, name, email, cellphone FROM players WHERE id = ?',
     id
