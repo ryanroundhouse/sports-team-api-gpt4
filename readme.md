@@ -294,3 +294,275 @@ Authorization: Bearer <access_token>
 ```
 
 Please note that the request validation information is now included in the documentation for each endpoint. Ensure you follow the validation requirements.
+
+# Game Endpoints
+
+## Base URL
+
+All URLs referenced in this documentation have the following base:
+
+`https://yourapi.example.com`
+
+## Authentication
+
+Some endpoints require authentication. To authenticate, include an `Authorization` header with the value `Bearer <access_token>` in the request.
+
+## Endpoints
+
+### Create Game
+
+- Endpoint: `POST /games`
+- Authentication: Required.
+- Request body:
+  - `location`: string (required) - The location of the game.
+  - `opposingTeam`: string (required) - The name of the opposing team.
+  - `time`: string (required) - The time of the game. Must be in ISO 8601 format.
+  - `notes`: string (optional) - Additional notes for the game.
+  - `teamId`: number (required) - The ID of the team hosting the game.
+
+```
+POST /games HTTP/1.1
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "location": "Stadium A",
+    "opposingTeam": "Team B",
+    "time": "2023-05-10T15:00:00.000Z",
+    "notes": "Bring extra water",
+    "teamId": 1
+}
+```
+
+- Success Response:
+  - Status: `201 Created`
+  - Body: Newly created game object
+- Error Responses:
+  - Status: `400 Bad Request` - Invalid request format
+  - Status: `403 Forbidden` - Only the team captain can create a game
+  - Status: `500 Internal Server Error` - An error occurred while creating the game
+
+### Get Game by ID
+
+- Endpoint: `GET /games/:id`
+- Authentication: Required.
+- Path parameter:
+  - `id`: number (required) - The ID of the game to retrieve.- Response: The requested game object.
+
+```
+GET /games/1 HTTP/1.1
+Authorization: Bearer <access_token>
+```
+
+- Success Response:
+  - Status: `200 OK`
+  - Body: Game object
+- Error Responses:
+  - Status: `404 Not Found` - Game not found
+  - Status: `403 Forbidden` - You are not authorized to view this game
+  - Status: `500 Internal Server Error` - An error occurred while fetching the game
+
+### Get All Games
+
+- Endpoint: `GET /games`
+- Authentication: Required.
+
+```
+GET /games HTTP/1.1
+Authorization: Bearer <access_token>
+```
+
+- Success Response:
+  - Status: `200 OK`
+  - Body: Array of game objects
+- Error Response:
+  - Status: `500 Internal Server Error` - An error occurred while fetching games
+
+### Update Game
+
+- Endpoint: `PUT /games/:id`
+- Authentication: Required.
+- Path parameter:
+  - `id`: number (required) - The ID of the game to update.
+- Request body:
+  - `location`: string (required) - The updated location of the game.
+  - `opposingTeam`: string (required) - The updated name of the opposing team.
+  - `time`: string (required) - The updated time of the game. Must be in ISO 8601 format.
+  - `notes`: string (optional) - Updated additional notes for the game.
+  - `teamId`: number (required) - The ID of the team hosting the game.
+
+```
+PUT /games/1 HTTP/1.1
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+    "location": "Stadium A Updated",
+    "opposingTeam": "Team B Updated",
+    "time": "2023-05-10T17:00:00.000Z",
+    "notes": "Bring extra water and snacks",
+    "teamId": 1
+}
+```
+
+- Success Response:
+  - Status: `200 OK`
+  - Body: Updated game object
+- Error Responses:
+  - Status: `400 Bad Request` - Invalid request format
+  - Status: `403 Forbidden` - Only the team captain can update a game
+  - Status: `404 Not Found` - Game not found
+  - Status: `500 Internal Server Error` - An error occurred while updating the game
+
+### Delete Game
+
+- Endpoint: `DELETE /games/:id`
+- Authentication: Required.
+- Path parameter:
+- `id`: number (required) - The ID of the game to delete.- Response: The deleted game object.
+
+```
+DELETE /games/1 HTTP/1.1
+Authorization: Bearer <access_token>
+```
+
+- Success Response:
+  - Status: `200 OK`
+  - Body: Deleted game object
+- Error Responses:
+  - Status: `403 Forbidden` - Only the team captain can delete a game
+  - Status: `404 Not Found` - Game not found
+  - Status: `500 Internal Server Error` - An error occurred while deleting the game
+
+# Attendance Endpoints
+
+## Base URL
+
+All URLs referenced in this documentation have the following base:
+
+`https://yourapi.example.com`
+
+## Authentication
+
+Some endpoints require authentication. To authenticate, include an `Authorization` header with the value `Bearer <access_token>` in the request.
+
+## Endpoints
+
+### Create Attendance
+
+- Endpoint: `POST /attendance`
+- Authentication: Required.
+- Request body:
+  - `gameId`: number (required) - The ID of the game for which attendance is being recorded.
+  - `playerId`: number (required) - The ID of the player whose attendance is being recorded.
+  - `status`: string (required) - The attendance status (e.g., "confirmed", "declined").
+
+```
+POST /attendance HTTP/1.1
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "gameId": 1,
+  "playerId": 2,
+  "status": "confirmed"
+}
+```
+
+- Success Response:
+  - Status: `201 Created`
+  - Body: Created attendance object
+- Error Responses:
+  - Status: `400 Bad Request` - Invalid request format
+  - Status: `403 Forbidden` - You must be a member of the team associated with the game to create an attendance
+  - Status: `404 Not Found` - Game not found
+  - Status: `500 Internal Server Error` - An error occurred while creating the attendance
+
+### Get All Attendances
+
+- Endpoint: `GET /attendance`
+- Authentication: Required.
+
+```
+GET /attendance HTTP/1.1
+Authorization: Bearer <access_token>
+```
+
+- Success Response:
+  - Status: `200 OK`
+  - Body: Array of attendance objects
+- Error Responses:
+  - Status: `500 Internal Server Error` - An error occurred while fetching attendance records
+
+### Get Attendance By Id
+
+- Endpoint: `GET /attendance/:id`
+- Authentication: Required.
+- Path parameter:
+  - `id`: number (required) - The ID of the attendance record to fetch.
+
+```
+GET /attendance/1 HTTP/1.1
+Authorization: Bearer <access_token>
+```
+
+- Success Response:
+  - Status: `200 OK`
+  - Body: Attendance object
+- Error Responses:
+  - Status: `404 Not Found` - Attendance record not found
+  - Status: `500 Internal Server Error` - An error occurred while fetching the attendance record
+
+### Update Attendance
+
+- Endpoint: `PUT /attendance/:id`
+- Authentication: Required.
+- Path parameter:
+  - `id`: number (required) - The ID of the attendance record to update.
+- Request body:
+  - `gameId`: number (required) - The updated ID of the game for which attendance is being recorded.
+  - `playerId`: number (required) - The updated ID of the player whose attendance is being recorded.
+  - `status`: string (required) - The updated attendance status (e.g., "confirmed", "declined").
+
+```
+PUT /attendance/1 HTTP/1.1
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "gameId": 1,
+  "playerId": 2,
+  "status": "declined"
+}
+```
+
+- Success Response:
+  - Status: `200 OK`
+  - Body: Updated attendance object
+- Error Responses:
+  - Status: `400 Bad Request` - Invalid request format
+  - Status: `403 Forbidden` - You must be a member of the team associated with the game to update an attendance
+  - Status: `404 Not Found` - Attendance record not found
+  - Status: `404 Not Found` - Game not found
+  - Status: `500 Internal Server Error` - An error occurred while updating the attendance record
+
+### Delete Attendance
+
+- Endpoint: `DELETE /attendance/:id`
+- Authentication: Required.
+- Path parameter:
+  - `id`: number (required) - The ID of the attendance record to delete.
+
+```
+DELETE /attendance/1 HTTP/1.1
+Authorization: Bearer <access_token>
+```
+
+- Success Response:
+  - Status: `200 OK`
+  - Body: Deleted attendance object
+- Error Responses:
+  - Status: `403 Forbidden` - You must be a member of the team associated with the game to delete an attendance
+  - Status: `404 Not Found` - Attendance record not found
+  - Status: `404 Not Found` - Game not found
+  - Status: `500 Internal Server Error` - An error occurred while deleting the attendance record
