@@ -2,7 +2,7 @@
 
 ## Base URL
 
-All the player endpoints are prefixed with `/players`. For example, if your API base URL is `https://api.example.com`, the endpoints will be available at `https://api.example.com/players`.
+All the player endpoints are prefixed with `/players`. For example, if your API base URL is `https://api.example.com`, the endpoints will be available at `https://api.example.com/api/players`.
 
 ## Authentication
 
@@ -114,7 +114,7 @@ Please note that the request validation information is now included in the docum
 
 ## Base URL
 
-All the team endpoints are prefixed with `/teams`. For example, if your API base URL is `https://api.example.com`, the endpoints will be available at `https://api.example.com/teams`.
+All the team endpoints are prefixed with `/teams`. For example, if your API base URL is `https://api.example.com`, the endpoints will be available at `https://api.example.com/api/teams`.
 
 ## Authentication
 
@@ -199,7 +199,7 @@ Please note that the request validation information is now included in the docum
 
 ## Base URL
 
-All the team membership endpoints are prefixed with `/teams/:teamId/team-memberships`. For example, if your API base URL is `https://api.example.com`, the endpoints will be available at `https://api.example.com/teams/:teamId/team-memberships`.
+All the team membership endpoints are prefixed with `/teams/:teamId/team-memberships`. For example, if your API base URL is `https://api.example.com`, the endpoints will be available at `https://api.example.com/api/teams/:teamId/team-memberships`.
 
 ## Authentication
 
@@ -301,7 +301,7 @@ Please note that the request validation information is now included in the docum
 
 All URLs referenced in this documentation have the following base:
 
-`https://yourapi.example.com`
+`https://api.example.com/api/`
 
 ## Authentication
 
@@ -440,7 +440,7 @@ Authorization: Bearer <access_token>
 
 All URLs referenced in this documentation have the following base:
 
-`https://yourapi.example.com`
+`https://api.example.com/api/`
 
 ## Authentication
 
