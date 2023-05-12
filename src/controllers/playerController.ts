@@ -26,7 +26,6 @@ const playerController = {
       return res.status(400).send({ message: 'Invalid email format.' });
     }
 
-    console.log(`invalid phone format: ${cellphone}`);
     if (!validator.isMobilePhone(cellphone)) {
       return res.status(400).send({ message: 'Invalid phone number format.' });
     }
