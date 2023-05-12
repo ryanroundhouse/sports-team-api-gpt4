@@ -15,10 +15,27 @@ import {
   getTeamMembershipsByPlayerId,
   isUserCaptainOfTeam,
 } from '../dataAccess/teamMembershipData';
+import validator from 'validator'
 
 const playerController = {
   async create(req: Request, res: Response, db: Database): Promise<Response> {
     const { name, email, cellphone, password } = req.body;
+
+    // Validate input parameters
+    if (!validator.isEmail(email)) {
+      return res.status(400).send({ message: 'Invalid email format.' });
+    }
+
+    console.log(`invalid phone format: ${cellphone}`);
+    if (!validator.isMobilePhone(cellphone)) {
+      return res.status(400).send({ message: 'Invalid phone number format.' });
+    }
+
+    // Check if user already exists
+    const existingUser = await getPlayerByEmail(db, email);
+    if (existingUser) {
+      return res.status(400).send({ message: 'Email already in use.' });
+    }
 
     const hashedPassword = await hashPassword(password);
 
@@ -41,6 +58,11 @@ const playerController = {
 
   async login(req: Request, res: Response, db: Database) {
     const { email, password } = req.body;
+
+    // Validate input parameters
+    if (!validator.isEmail(email)) {
+      return res.status(400).send({ message: 'Invalid email format.' });
+    }
 
     const user = await getPlayerByEmail(db, email);
 
@@ -162,6 +184,15 @@ const playerController = {
     const { name, email, cellphone } = req.body;
     const userId = req.userId; // Get the user ID from the decoded token
 
+    // Validate input parameters
+    if (!validator.isEmail(email)) {
+      return res.status(400).send({ message: 'Invalid email format.' });
+    }
+
+    if (!validator.isMobilePhone(cellphone)) {
+      return res.status(400).send({message: 'Invalid phone number format.'});
+    }
+
     // Check if the user is trying to update their own information
     if (Number(id) !== userId) {
       return res.status(403).send({
@@ -192,21 +223,22 @@ const playerController = {
 
   async delete(req: Request, res: Response, db: Database): Promise<Response> {
     const { id } = req.params;
-    const userId = req.userId; // Get the user ID from the decoded token
-
+    const userId = req.userId;
+  
+    // Check if the user is trying to delete their own player
+    if (Number(id) !== userId) {
+      return res.status(403).send({
+        message: 'You are not authorized to delete this player.',
+      });
+    }
+  
     try {
-      if (Number(id) !== userId) {
-        return res.status(403).send({
-          message: 'You are not authorized to delete this player.',
-        });
-      }
-
       const deletedPlayer = await deletePlayer(db, Number(id));
-
+  
       if (!deletedPlayer) {
         return res.status(404).send({ message: 'Player not found.' });
       }
-
+  
       return res.status(200).send(deletedPlayer);
     } catch (error) {
       return res

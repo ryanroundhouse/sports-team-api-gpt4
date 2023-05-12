@@ -22,27 +22,17 @@ afterAll(async () => {
   await db.close();
 });
 
-describe('Player routes', () => {
+describe('POST /players/login', () => {
   const playerData = {
     name: 'John Doe',
     email: 'johndoe@example.com',
-    cellphone: '+1234567890',
+    cellphone: '1234567891',
     password: 'test123',
   };
 
   afterEach(async () => {
     // Clean up the test data after each test
     await db.run('DELETE FROM players');
-  });
-
-  it('should create a new player', async () => {
-    const res = await supertest(app).post('/players').send(playerData);
-
-    expect(res.status).toEqual(201);
-    expect(res.body).toHaveProperty('id');
-    expect(res.body.name).toEqual(playerData.name);
-    expect(res.body.email).toEqual(playerData.email);
-    expect(res.body.cellphone).toEqual(playerData.cellphone);
   });
 
   it('should login with the correct credentials', async () => {
@@ -87,65 +77,55 @@ describe('Player routes', () => {
 
     expect(res.status).toEqual(401);
   });
+});
 
-  it('should read one player', async () => {
-    // Create a test player for this test
-    const hashedPassword = await hashPassword(playerData.password);
-    const { lastID } = await db.run(
-      'INSERT INTO players (name, email, cellphone, password, role) VALUES (?, ?, ?, ?, ?)',
-      [
-        playerData.name,
-        playerData.email,
-        playerData.cellphone,
-        hashedPassword,
-        'player',
-      ]
-    );
-    const token = generateToken({ id: lastID ?? 1, role: 'player' });
+describe('PUT /players/:id', () => {
+  const playerData = {
+    name: 'John Doe',
+    email: 'johndoe@example.com',
+    cellphone: '1234567891',
+    password: 'test123',
+  };
+  let adminId: number;
+  let playerId: number;
+  let otherPlayerId: number;
 
-    const res = await supertest(app)
-      .get(`/players/${lastID}`)
-      .set('Authorization', `Bearer ${token}`);
-
-    expect(res.status).toEqual(200);
-    expect(res.body).toHaveProperty('id');
-    expect(res.body.name).toEqual(playerData.name);
-    expect(res.body.email).toEqual(playerData.email);
-    expect(res.body.cellphone).toEqual(playerData.cellphone);
+  beforeEach(async () => {
+    // Create players
+    adminId = (
+      (await createPlayer(
+        db,
+        'Admin',
+        'admin@example.com',
+        '123-456-7890',
+        await hashPassword('test123')
+      )) ?? { id: -1 }
+    ).id;
+    await promoteUserToAdmin(db, adminId);
+    playerId = (
+      (await createPlayer(
+        db,
+        'Player',
+        'player@example.com',
+        '+0987654321',
+        await hashPassword('test321')
+      )) ?? { id: -2 }
+    ).id;
+    otherPlayerId = (
+      (await createPlayer(
+        db,
+        'Other Player',
+        'otherplayer@example.com',
+        '098-765-4321',
+        await hashPassword('test321')
+      )) ?? { id: -3 }
+    ).id;
   });
 
-  it('should read many players', async () => {
-    // Create test players for this test
-    const hashedPassword = await hashPassword(playerData.password);
-    await db.run(
-      'INSERT INTO players (name, email, cellphone, password, role) VALUES (?, ?, ?, ?, ?)',
-      [
-        playerData.name,
-        playerData.email,
-        playerData.cellphone,
-        hashedPassword,
-        'player',
-      ]
-    );
-    const { lastID } = await db.run(
-      'INSERT INTO players (name, email, cellphone, password, role) VALUES (?, ?, ?, ?, ?)',
-      [
-        'Jane Doe',
-        'janedoe@example.com',
-        '+1234567891',
-        hashedPassword,
-        'admin',
-      ]
-    );
-    const token = generateToken({ id: lastID ?? 1, role: 'admin' });
-
-    const res = await supertest(app)
-      .get('/players')
-      .set('Authorization', `Bearer ${token}`);
-
-    expect(res.status).toEqual(200);
-    expect(res.body).toHaveLength(2);
+  afterEach(async () => {
+    await db.run('DELETE FROM players');
   });
+
 
   it('should update a player', async () => {
     // Create a test player for this test
@@ -164,7 +144,7 @@ describe('Player routes', () => {
     const updatedPlayerData = {
       name: 'John Updated',
       email: 'johnupdated@example.com',
-      cellphone: '+1234567899',
+      cellphone: '1234567899',
     };
     const token = generateToken({ id: lastID ?? 1, role: 'player' });
 
@@ -217,7 +197,7 @@ describe('Player routes', () => {
     const updatedInfo = {
       name: 'Updated Player Two',
       email: 'updatedplayertwo@example.com',
-      cellphone: '+1111111111',
+      cellphone: '1111111111',
     };
 
     const res = await supertest(app)
@@ -231,36 +211,72 @@ describe('Player routes', () => {
     );
   });
 
-  it('should delete a player', async () => {
-    // Create a test player for this test
-    const hashedPassword = await hashPassword(playerData.password);
-    const { lastID } = await db.run(
-      'INSERT INTO players (name, email, cellphone, password, role) VALUES (?, ?, ?, ?, ?)',
-      [
-        playerData.name,
-        playerData.email,
-        playerData.cellphone,
-        hashedPassword,
-        'player',
-      ]
-    );
-    const token = generateToken({ id: lastID ?? 1, role: 'player' });
+  it('should fail to update player with invalid email', async () => {
+    const token = generateToken({ id: adminId, role: 'admin' });
+    const invalidUpdateData = { ...playerData, email: 'invalidEmail' };
 
     const res = await supertest(app)
-      .delete(`/players/${lastID}`)
+      .put(`/players/${playerId}`)
+      .send(invalidUpdateData)
       .set('Authorization', `Bearer ${token}`);
 
-    const deletedPlayer = await db.get(
-      'SELECT id, name, email, cellphone FROM players WHERE id = ?',
-      lastID
-    );
+    expect(res.status).toEqual(400);
+    expect(res.body.message).toEqual('Invalid email format.');
+  });
 
-    expect(deletedPlayer).toBe(undefined);
-    expect(res.status).toEqual(200);
+  it('should fail to update player with invalid phone number', async () => {
+    const token = generateToken({ id: adminId, role: 'admin' });
+    const invalidUpdateData = { ...playerData, cellphone: '123' };
+
+    const res = await supertest(app)
+      .put(`/players/${playerId}`)
+      .send(invalidUpdateData)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toEqual(400);
+    expect(res.body.message).toEqual('Invalid phone number format.');
+  });
+});
+
+describe('POST /players/', () => {
+  const playerData = {
+    name: 'John Doe',
+    email: 'johndoe@example.com',
+    cellphone: '1234567891',
+    password: 'test123',
+  };
+
+  afterEach(async () => {
+    await db.run('DELETE FROM players');
+  });
+
+
+  it('should create a new player', async () => {
+    const res = await supertest(app).post('/players').send(playerData);
+
+    expect(res.status).toEqual(201);
     expect(res.body).toHaveProperty('id');
     expect(res.body.name).toEqual(playerData.name);
     expect(res.body.email).toEqual(playerData.email);
     expect(res.body.cellphone).toEqual(playerData.cellphone);
+  });
+
+  it('should fail to create a new player with invalid email', async () => {
+    const invalidPlayerData = { ...playerData, email: 'invalidEmail' };
+
+    const res = await supertest(app).post('/players').send(invalidPlayerData);
+
+    expect(res.status).toEqual(400);
+    expect(res.body.message).toEqual('Invalid email format.');
+  });
+
+  it('should fail to create a new player with invalid phone number', async () => {
+    const invalidPlayerData = { ...playerData, cellphone: '123' };
+
+    const res = await supertest(app).post('/players').send(invalidPlayerData);
+
+    expect(res.status).toEqual(400);
+    expect(res.body.message).toEqual('Invalid phone number format.');
   });
 });
 
@@ -276,7 +292,7 @@ describe('GET /players/:id', () => {
         db,
         'Admin',
         'admin@example.com',
-        '+1234567890',
+        '123-456-7890',
         await hashPassword('test123')
       )) ?? { id: -1 }
     ).id;
@@ -295,7 +311,7 @@ describe('GET /players/:id', () => {
         db,
         'Other Player',
         'otherplayer@example.com',
-        '+0987654321',
+        '098-765-4321',
         await hashPassword('test321')
       )) ?? { id: -3 }
     ).id;
@@ -370,7 +386,7 @@ describe('GET /players', () => {
         db,
         'Admin',
         'admin@example.com',
-        '+1111111111',
+        '1111111111',
         await hashPassword('admin123')
       )) ?? { id: -1 }
     ).id;
@@ -381,7 +397,7 @@ describe('GET /players', () => {
         db,
         'Player',
         'player@example.com',
-        '+2222222222',
+        '2222222222',
         await hashPassword('player123')
       )) ?? { id: -2 }
     ).id;
@@ -391,7 +407,7 @@ describe('GET /players', () => {
         db,
         'Player',
         'noteam@example.com',
-        '+2222222222',
+        '2222222222',
         await hashPassword('player123')
       )) ?? { id: -3 }
     ).id;
@@ -471,7 +487,7 @@ describe('DELETE /players/:id', () => {
         db,
         'Player1',
         'player1@example.com',
-        '+1111111111',
+        '1111111111',
         await hashPassword('player123')
       )) ?? { id: -1 }
     ).id;
@@ -481,7 +497,7 @@ describe('DELETE /players/:id', () => {
         db,
         'Player2',
         'player2@example.com',
-        '+2222222222',
+        '2222222222',
         await hashPassword('player234')
       )) ?? { id: -2 }
     ).id;
