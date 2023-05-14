@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Database } from 'sqlite';
-import { hashPassword, validatePassword, generateToken } from '../auth';
+import { validatePassword, generateToken } from '../auth';
 import {
   createPlayer,
   getPlayerByEmail,
@@ -15,7 +15,8 @@ import {
   getTeamMembershipsByPlayerId,
   isUserCaptainOfTeam,
 } from '../dataAccess/teamMembershipData';
-import validator from 'validator'
+import validator from 'validator';
+import logger from '../logger';
 
 const playerController = {
   async create(req: Request, res: Response, db: Database): Promise<Response> {
@@ -36,15 +37,13 @@ const playerController = {
       return res.status(400).send({ message: 'Email already in use.' });
     }
 
-    const hashedPassword = await hashPassword(password);
-
     try {
       const newPlayer = await createPlayer(
         db,
         name,
         email,
         cellphone,
-        hashedPassword
+        password
       );
 
       return res.status(201).send(newPlayer);
@@ -189,7 +188,7 @@ const playerController = {
     }
 
     if (!validator.isMobilePhone(cellphone)) {
-      return res.status(400).send({message: 'Invalid phone number format.'});
+      return res.status(400).send({ message: 'Invalid phone number format.' });
     }
 
     // Check if the user is trying to update their own information
@@ -223,21 +222,21 @@ const playerController = {
   async delete(req: Request, res: Response, db: Database): Promise<Response> {
     const { id } = req.params;
     const userId = req.userId;
-  
+
     // Check if the user is trying to delete their own player
     if (Number(id) !== userId) {
       return res.status(403).send({
         message: 'You are not authorized to delete this player.',
       });
     }
-  
+
     try {
       const deletedPlayer = await deletePlayer(db, Number(id));
-  
+
       if (!deletedPlayer) {
         return res.status(404).send({ message: 'Player not found.' });
       }
-  
+
       return res.status(200).send(deletedPlayer);
     } catch (error) {
       return res
