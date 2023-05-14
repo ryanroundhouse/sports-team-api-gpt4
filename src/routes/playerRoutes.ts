@@ -7,6 +7,7 @@ import logger from '../logger';
 const router = express.Router();
 
 const setupPlayerRoutes = (db: Database) => {
+  logger.info('connecting player routes.');
   router.post('/players', (req, res) => {
     logger.info('POST /players');
     playerController.create(req, res, db);
