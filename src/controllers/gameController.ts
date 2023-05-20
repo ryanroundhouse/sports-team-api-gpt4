@@ -7,6 +7,7 @@ import {
 } from '../dataAccess/teamMembershipData';
 import { Game } from '../models';
 import { getGamesByTeamIds, updateGame } from '../dataAccess/gameData';
+import logger from '../logger';
 
 const gameController = {
   async create(req: Request, res: Response, db: Database): Promise<Response> {
@@ -23,6 +24,7 @@ const gameController = {
 
     try {
       if (!userId) {
+        logger.info('Unauthorized. Login before making this call.');
         return res
           .status(403)
           .send({ message: 'Unauthorized. Login before making this call.' });
@@ -30,6 +32,7 @@ const gameController = {
       const isCaptain = await isUserCaptainOfTeam(db, userId, teamId);
 
       if (!isCaptain) {
+        logger.info(`Only the team captain can create a game. ${userId} is not captain of ${teamId}`);
         return res
           .status(403)
           .send({ message: 'Only the team captain can create a game.' });
@@ -37,6 +40,7 @@ const gameController = {
       const game = await gameData.createGame(db, newGame);
       return res.status(201).send(game);
     } catch (error) {
+      logger.info(JSON.stringify(error));
       return res
         .status(500)
         .send({ message: 'An error occurred while creating the game.' });

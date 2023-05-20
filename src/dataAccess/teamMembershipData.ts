@@ -1,5 +1,5 @@
-import { Database } from 'sqlite';
-import { TeamMembership } from '../models';
+import { Database } from "sqlite";
+import { TeamMembership } from "../models";
 
 export const createTeamMembership = async (
   db: Database,
@@ -8,12 +8,12 @@ export const createTeamMembership = async (
   is_captain: boolean
 ): Promise<TeamMembership | undefined> => {
   const result = await db.run(
-    'INSERT INTO team_memberships (team_id, player_id, is_captain) VALUES (?, ?, ?)',
+    "INSERT INTO team_memberships (team_id, player_id, is_captain) VALUES (?, ?, ?)",
     [team_id, player_id, is_captain]
   );
   const newMembershipId = result.lastID;
   return await db.get(
-    'SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE id = ?',
+    "SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE id = ?",
     newMembershipId
   );
 };
@@ -24,7 +24,7 @@ export const getTeamMembershipByTeamAndPlayer = async (
   player_id: number
 ): Promise<TeamMembership | undefined> => {
   return await db.get(
-    'SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE team_id = ? AND player_id = ?',
+    "SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE team_id = ? AND player_id = ?",
     [team_id, player_id]
   );
 };
@@ -35,7 +35,7 @@ export const getCaptainMembershipByTeamAndPlayer = async (
   player_id: number
 ): Promise<TeamMembership | undefined> => {
   return await db.get(
-    'SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE team_id = ? AND player_id = ? AND is_captain = 1',
+    "SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE team_id = ? AND player_id = ? AND is_captain = 1",
     [team_id, player_id]
   );
 };
@@ -45,7 +45,7 @@ export const getTeamMembershipsByTeam = async (
   team_id: number
 ): Promise<TeamMembership | undefined> => {
   return await db.all(
-    'SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE team_id = ?',
+    "SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE team_id = ?",
     team_id
   );
 };
@@ -56,7 +56,7 @@ export const getTeamMembershipByPlayerIdAndTeam = async (
   team_id: number
 ): Promise<TeamMembership | undefined> => {
   return await db.get(
-    'SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE player_id = ? AND team_id = ?',
+    "SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE player_id = ? AND team_id = ?",
     [id, team_id]
   );
 };
@@ -66,7 +66,7 @@ export const getTeamMembershipById = async (
   id: number
 ): Promise<TeamMembership | undefined> => {
   return await db.get(
-    'SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE id = ?',
+    "SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE id = ?",
     [id]
   );
 };
@@ -79,11 +79,11 @@ export const updateTeamMembership = async (
   is_captain: boolean
 ): Promise<TeamMembership | undefined> => {
   await db.run(
-    'UPDATE team_memberships SET player_id = ?, is_captain = ? WHERE id = ? AND team_id = ?',
+    "UPDATE team_memberships SET player_id = ?, is_captain = ? WHERE id = ? AND team_id = ?",
     [player_id, is_captain, id, team_id]
   );
   return await db.get(
-    'SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE id = ? AND team_id = ?',
+    "SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE id = ? AND team_id = ?",
     [id, team_id]
   );
 };
@@ -94,10 +94,10 @@ export async function deleteTeamMembershipsByTeam(
 ): Promise<TeamMembership | undefined> {
   try {
     const teamMembershipToDelete = await getTeamMembershipById(db, team_id);
-    await db.run('DELETE FROM team_memberships WHERE team_id = ?', team_id);
+    await db.run("DELETE FROM team_memberships WHERE team_id = ?", team_id);
     return teamMembershipToDelete;
   } catch (error) {
-    throw new Error('An error occurred while deleting team memberships.');
+    throw new Error("An error occurred while deleting team memberships.");
   }
 }
 
@@ -107,11 +107,21 @@ export const isUserCaptainOfTeam = async (
   team_id: number
 ): Promise<boolean> => {
   const captainMembership = await db.get(
-    'SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE team_id = ? AND player_id = ? AND is_captain = 1',
+    "SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE team_id = ? AND player_id = ? AND is_captain = 1",
     [team_id, userId]
   );
 
   return !!captainMembership;
+};
+
+export const getTeamMembershipsByPlayer = async (
+  db: Database,
+  player_id: number
+): Promise<TeamMembership[]> => {
+  return await db.all(
+    "SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE player_id = ?",
+    player_id
+  );
 };
 
 export async function getTeamMembershipsByPlayerId(
@@ -138,10 +148,10 @@ export const deleteTeamMembership = async (
   team_id: number
 ): Promise<TeamMembership | undefined> => {
   const deletedMembership = await db.get(
-    'SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE id = ? AND team_id = ?',
+    "SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE id = ? AND team_id = ?",
     [id, team_id]
   );
-  await db.run('DELETE FROM team_memberships WHERE id = ? AND team_id = ?', [
+  await db.run("DELETE FROM team_memberships WHERE id = ? AND team_id = ?", [
     id,
     team_id,
   ]);

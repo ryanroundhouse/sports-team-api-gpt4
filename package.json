@@ -7,7 +7,7 @@
     "test": "jest",
     "build": "tsc",
     "run": "tsc && node dist/index.js",
-    "start": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/index.ts"
+    "start": "nodemon --watch 'src/**/*.ts' --exec ts-node src/index.ts"
   },
   "keywords": [],
   "author": "",

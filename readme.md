@@ -108,7 +108,18 @@ Content-Type: application/json
 DELETE /players/1 HTTP/1.1 Authorization: Bearer <access_token>
 ```
 
-Please note that the request validation information is now included in the documentation for each endpoint. Ensure you follow the validation requirements
+### Get a player's team memberships
+
+- Endpoint: GET /players/:id/team-memberships
+- Authentication: Required.
+- Path parameter:
+  - id: number (required) - The ID of the player for which to retrieve team memberships.
+- Response: An array of team membership objects for the specified player.
+
+```
+GET /players/1/team-memberships HTTP/1.1
+Authorization: Bearer <access_token>
+```
 
 # Team Endpoints
 

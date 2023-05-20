@@ -1,5 +1,5 @@
-import { Request, Response } from 'express';
-import { Database } from 'sqlite';
+import { Request, Response } from "express";
+import { Database } from "sqlite";
 import {
   createTeamMembership,
   getTeamMembershipByTeamAndPlayer,
@@ -10,7 +10,8 @@ import {
   deleteTeamMembership,
   isUserCaptainOfTeam,
   getTeamMembershipById,
-} from '../dataAccess/teamMembershipData';
+  getTeamMembershipsByPlayer,
+} from "../dataAccess/teamMembershipData";
 
 const teamMembershipController = {
   async create(req: Request, res: Response, db: Database) {
@@ -22,7 +23,7 @@ const teamMembershipController = {
       if (!userId) {
         return res
           .status(403)
-          .send({ message: 'Unauthorized. Login before making this call.' });
+          .send({ message: "Unauthorized. Login before making this call." });
       }
       if (playerId !== userId) {
         const captainMembership = await getCaptainMembershipByTeamAndPlayer(
@@ -34,7 +35,7 @@ const teamMembershipController = {
         if (!captainMembership) {
           return res.status(403).send({
             message:
-              'Only the player themselves or a team captain can add a team membership.',
+              "Only the player themselves or a team captain can add a team membership.",
           });
         }
       }
@@ -48,7 +49,7 @@ const teamMembershipController = {
       if (existingMembership) {
         return res.status(409).send({
           message:
-            'A team membership with the same playerId and teamId already exists.',
+            "A team membership with the same playerId and teamId already exists.",
         });
       }
 
@@ -62,7 +63,7 @@ const teamMembershipController = {
       res.status(201).send(newMembership);
     } catch (error) {
       res.status(500).send({
-        message: 'An error occurred while creating the team membership.',
+        message: "An error occurred while creating the team membership.",
       });
     }
   },
@@ -75,7 +76,37 @@ const teamMembershipController = {
       res.status(200).send(memberships);
     } catch (error) {
       res.status(500).send({
-        message: 'An error occurred while fetching team memberships.',
+        message: "An error occurred while fetching team memberships.",
+      });
+    }
+  },
+
+  async readManyByUserId(req: Request, res: Response, db: Database) {
+    const { id } = req.params;
+    const userRole = req.userRole;
+    const userId = req.userId;
+
+    try {
+      if (!userId) {
+        return res
+          .status(403)
+          .send({ message: "Unauthorized. Login before making this call." });
+      }
+      if (userId !== parseInt(id) && userRole !== "admin") {
+        return res.status(403).send({
+          message: "Unauthorized. You can only get your own teamMemberships.",
+        });
+      }
+      const memberships = await getTeamMembershipsByPlayer(db, parseInt(id));
+      if (!memberships || memberships.length === 0) {
+        return res.status(404).send({ message: "Player not found." });
+      }
+
+      res.status(200).send(memberships);
+    } catch (error) {
+      res.status(500).send({
+        message:
+          "An error occurred while fetching team memberships for the user.",
       });
     }
   },
@@ -87,13 +118,13 @@ const teamMembershipController = {
       const membership = await getTeamMembershipById(db, parseInt(id));
 
       if (!membership) {
-        return res.status(404).send({ message: 'Team membership not found.' });
+        return res.status(404).send({ message: "Team membership not found." });
       }
 
       res.status(200).send(membership);
     } catch (error) {
       res.status(500).send({
-        message: 'An error occurred while fetching the team membership.',
+        message: "An error occurred while fetching the team membership.",
       });
     }
   },
@@ -107,7 +138,7 @@ const teamMembershipController = {
       if (!userId) {
         return res
           .status(403)
-          .send({ message: 'Unauthorized. Login before making this call.' });
+          .send({ message: "Unauthorized. Login before making this call." });
       }
       const isCaptainOfTeam = await isUserCaptainOfTeam(
         db,
@@ -117,7 +148,7 @@ const teamMembershipController = {
 
       if (!isCaptainOfTeam) {
         return res.status(403).send({
-          message: 'Only the team captain can update team memberships.',
+          message: "Only the team captain can update team memberships.",
         });
       }
 
@@ -130,13 +161,13 @@ const teamMembershipController = {
       );
 
       if (!updatedMembership) {
-        return res.status(404).send({ message: 'Team membership not found.' });
+        return res.status(404).send({ message: "Team membership not found." });
       }
 
       res.status(200).send(updatedMembership);
     } catch (error) {
       res.status(500).send({
-        message: 'An error occurred while updating the team membership.',
+        message: "An error occurred while updating the team membership.",
       });
     }
   },
@@ -149,12 +180,12 @@ const teamMembershipController = {
       if (!userId) {
         return res
           .status(403)
-          .send({ message: 'Unauthorized. Login before making this call.' });
+          .send({ message: "Unauthorized. Login before making this call." });
       }
       const deletedMembership = await getTeamMembershipById(db, parseInt(id));
 
       if (!deletedMembership) {
-        return res.status(404).send({ message: 'Team membership not found.' });
+        return res.status(404).send({ message: "Team membership not found." });
       }
 
       const isCaptainOfTeam = await isUserCaptainOfTeam(
@@ -167,7 +198,7 @@ const teamMembershipController = {
       if (!isCaptainOfTeam && !isPlayer) {
         return res.status(403).send({
           message:
-            'Only the team captain or the player themselves can delete the team membership.',
+            "Only the team captain or the player themselves can delete the team membership.",
         });
       }
 
@@ -176,7 +207,7 @@ const teamMembershipController = {
       res.status(200).send(deletedMembership);
     } catch (error) {
       res.status(500).send({
-        message: 'An error occurred while deleting the team membership.',
+        message: "An error occurred while deleting the team membership.",
       });
     }
   },
