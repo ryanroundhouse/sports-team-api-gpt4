@@ -1,14 +1,18 @@
-import { Request, Response } from 'express';
-import { Database } from 'sqlite';
+import { Request, Response } from "express";
+import { Database } from "sqlite";
 import {
   createAttendance,
   getAttendanceById,
   getAllAttendances,
+  getAttendanceByGameId,
   updateAttendance,
   deleteAttendance,
-} from '../dataAccess/attendanceData';
-import { getGameById } from '../dataAccess/gameData';
-import { getTeamMembershipByPlayerIdAndTeam } from '../dataAccess/teamMembershipData';
+} from "../dataAccess/attendanceData";
+import { getGameById } from "../dataAccess/gameData";
+import {
+  getTeamMembershipByPlayerIdAndTeam,
+  getTeamMembershipsByPlayerId,
+} from "../dataAccess/teamMembershipData";
 
 interface Attendance {
   playerId: number;
@@ -26,13 +30,13 @@ const attendanceController = {
       if (!userId) {
         return res
           .status(403)
-          .send({ message: 'Unauthorized. Login before making this call.' });
+          .send({ message: "Unauthorized. Login before making this call." });
       }
 
       const game = await getGameById(db, gameId);
 
       if (!game) {
-        return res.status(404).send({ message: 'Game not found.' });
+        return res.status(404).send({ message: "Game not found." });
       }
 
       const membership = await getTeamMembershipByPlayerIdAndTeam(
@@ -44,7 +48,7 @@ const attendanceController = {
       if (!membership) {
         return res.status(403).send({
           message:
-            'You must be a member of the team associated with the game to create an attendance.',
+            "You must be a member of the team associated with the game to create an attendance.",
         });
       }
 
@@ -59,7 +63,7 @@ const attendanceController = {
       console.log(error);
       return res
         .status(500)
-        .send({ message: 'An error occurred while creating the attendance.' });
+        .send({ message: "An error occurred while creating the attendance." });
     }
   },
 
@@ -70,7 +74,60 @@ const attendanceController = {
     } catch (error) {
       res
         .status(500)
-        .send({ message: 'An error occurred while fetching attendances.' });
+        .send({ message: "An error occurred while fetching attendances." });
+    }
+  },
+
+  async getAttendanceByGameId(
+    req: Request,
+    res: Response,
+    db: Database
+  ): Promise<Response> {
+    const { id } = req.params;
+    const userId = req.userId;
+    const isAdmin = req.userRole === "admin";
+
+    try {
+      if (!userId) {
+        return res
+          .status(403)
+          .send({ message: "Unauthorized. Login before making this call." });
+      }
+
+      const game = await getGameById(db, parseInt(id));
+      if (!game) {
+        return res.status(404).send({ message: "Game not found." });
+      }
+
+      if (!isAdmin) {
+        const memberships = await getTeamMembershipsByPlayerId(db, userId);
+        const isTeamMember = memberships.some(
+          (membership) => membership.teamId === game.teamId
+        );
+
+        if (!isTeamMember) {
+          return res
+            .status(403)
+            .send({ message: "You are not authorized to view this game." });
+        }
+      }
+
+      // Fetch the attendance records for the provided game
+      const attendances = await getAttendanceByGameId(db, Number(id));
+      if (!attendances || attendances.length === 0) {
+        // If there are no attendance records, return a 404 Not Found response
+        return res
+          .status(404)
+          .send({ message: "No attendances found for this game." });
+      }
+
+      // If everything is successful, return the attendance records
+      return res.status(200).send(attendances);
+    } catch (error) {
+      console.log(error);
+      return res
+        .status(500)
+        .send({ message: "An error occurred while fetching the attendances." });
     }
   },
 
@@ -81,14 +138,14 @@ const attendanceController = {
       const attendance = await getAttendanceById(db, Number(id));
 
       if (!attendance) {
-        return res.status(404).send({ message: 'Attendance not found.' });
+        return res.status(404).send({ message: "Attendance not found." });
       }
 
       return res.status(200).send(attendance);
     } catch (error) {
       return res
         .status(500)
-        .send({ message: 'An error occurred while fetching the attendance.' });
+        .send({ message: "An error occurred while fetching the attendance." });
     }
   },
 
@@ -101,18 +158,18 @@ const attendanceController = {
       if (!userId) {
         return res
           .status(403)
-          .send({ message: 'Unauthorized. Login before making this call.' });
+          .send({ message: "Unauthorized. Login before making this call." });
       }
       const attendance = await getAttendanceById(db, Number(id));
 
       if (!attendance) {
-        return res.status(404).send({ message: 'Attendance not found.' });
+        return res.status(404).send({ message: "Attendance not found." });
       }
 
       const game = await getGameById(db, gameId);
 
       if (!game) {
-        return res.status(404).send({ message: 'Game not found.' });
+        return res.status(404).send({ message: "Game not found." });
       }
 
       const membership = await getTeamMembershipByPlayerIdAndTeam(
@@ -124,7 +181,7 @@ const attendanceController = {
       if (!membership) {
         return res.status(403).send({
           message:
-            'You must be a member of the team associated with the game to update an attendance.',
+            "You must be a member of the team associated with the game to update an attendance.",
         });
       }
 
@@ -138,7 +195,7 @@ const attendanceController = {
     } catch (error) {
       return res
         .status(500)
-        .send({ message: 'An error occurred while updating the attendance.' });
+        .send({ message: "An error occurred while updating the attendance." });
     }
   },
 
@@ -149,18 +206,18 @@ const attendanceController = {
       if (!userId) {
         return res
           .status(403)
-          .send({ message: 'Unauthorized. Login before making this call.' });
+          .send({ message: "Unauthorized. Login before making this call." });
       }
       const attendance = await getAttendanceById(db, Number(id));
 
       if (!attendance) {
-        return res.status(404).send({ message: 'Attendance not found.' });
+        return res.status(404).send({ message: "Attendance not found." });
       }
 
       const game = await getGameById(db, attendance.gameId);
 
       if (!game) {
-        return res.status(404).send({ message: 'Game not found.' });
+        return res.status(404).send({ message: "Game not found." });
       }
 
       const membership = await getTeamMembershipByPlayerIdAndTeam(
@@ -172,7 +229,7 @@ const attendanceController = {
       if (!membership) {
         return res.status(403).send({
           message:
-            'You must be a member of the team associated with the game to delete an attendance.',
+            "You must be a member of the team associated with the game to delete an attendance.",
         });
       }
 
@@ -181,7 +238,7 @@ const attendanceController = {
     } catch (error) {
       return res
         .status(500)
-        .send({ message: 'An error occurred while deleting the attendance.' });
+        .send({ message: "An error occurred while deleting the attendance." });
     }
   },
 };

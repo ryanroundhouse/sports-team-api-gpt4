@@ -373,6 +373,30 @@ Authorization: Bearer <access_token>
   - Status: `403 Forbidden` - You are not authorized to view this game
   - Status: `500 Internal Server Error` - An error occurred while fetching the game
 
+### Get Game Attendances by ID
+
+- Endpoint: GET /games/:id/attendance
+- Authentication: Required.
+- Path parameter:
+  - id: number (required) - The ID of the game for which to retrieve attendance records.
+
+```
+GET /games/1/attendance HTTP/1.1
+Authorization: Bearer <access_token>
+```
+
+- Success Response:
+  - Status: 200 OK
+  - Body: Array of attendance records for the requested game.
+- Error Responses:
+  - Status: 403 Forbidden
+    - Unauthorized. Login before making this call.
+    - You are not authorized to view this game.
+  - Status: 404 Not Found
+    - Game not found.
+    - No attendances found for this game.
+  - Status: 500 Internal Server Error - An error occurred while fetching the attendances.
+
 ### Get All Games
 
 - Endpoint: `GET /games`

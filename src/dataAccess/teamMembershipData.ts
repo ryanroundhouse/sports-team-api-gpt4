@@ -43,7 +43,7 @@ export const getCaptainMembershipByTeamAndPlayer = async (
 export const getTeamMembershipsByTeam = async (
   db: Database,
   team_id: number
-): Promise<TeamMembership | undefined> => {
+): Promise<TeamMembership[] | undefined> => {
   return await db.all(
     "SELECT id, team_id AS teamId, player_id AS playerId, is_captain AS isCaptain FROM team_memberships WHERE team_id = ?",
     team_id
