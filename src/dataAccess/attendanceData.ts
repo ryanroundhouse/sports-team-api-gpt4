@@ -35,7 +35,7 @@ export async function getAttendanceByGameId(
   gameId: number
 ): Promise<Attendance[]> {
   const attendances: Array<Attendance> = [];
-  const createdAttendances: Array<Attendance> | undefined = await db.get(
+  const createdAttendances: Array<Attendance> | undefined = await db.all(
     "SELECT id, player_id AS playerId, game_id AS gameId, status FROM attendances WHERE game_id = ?",
     gameId
   );
